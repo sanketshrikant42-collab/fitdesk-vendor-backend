@@ -17,7 +17,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from licensing import views as licensing_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('licensing.urls')),
+
+    # NOT under /api/ -- this is a browser-rendered HTML page (Meta's
+    # Embedded Signup JS SDK needs a real web page context), opened by
+    # the desktop app in the user's system browser, not called by the
+    # desktop app itself. See licensing/views.py's whatsapp_connect_page.
+    path('whatsapp/connect/<str:token>/', licensing_views.whatsapp_connect_page, name='whatsapp_connect_page'),
 ]

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect WhatsApp — FitDesk Pro</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; background:#F6F7FB; color:#101828; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:16px; box-sizing:border-box; }
+  .card { background:#fff; border-radius:12px; padding:32px 28px; max-width:420px; width:100%; box-shadow:0 4px 24px rgba(16,24,40,0.08); text-align:center; box-sizing:border-box; }
+  h1 { font-size:18px; margin:0 0 8px; }
+  p { color:#667085; font-size:14px; line-height:1.5; }
+  button { background:#12B76A; color:#fff; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:700; cursor:pointer; margin-top:16px; }
+  button:disabled { background:#D0D5DD; cursor:default; }
+  .status { margin-top:16px; font-size:13px; min-height:18px; }
+  .status.error { color:#B42318; }
+  .status.success { color:#067647; }
+  .gymname { font-weight:700; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Connect Your WhatsApp Business Account</h1>
+    <p>for <span class="gymname">{{ gym_name }}</span></p>
+    <p>FitDesk Pro will open Meta's secure authorization page. Your Meta
+       password is entered only on Meta — FitDesk Pro never sees it.</p>
+    <button id="connectBtn" {% if not valid %}disabled{% endif %}>Continue to Meta</button>
+    <div id="statusLine" class="status">{% if not valid %}This connection link has expired. Please click &quot;Connect WhatsApp&quot; again in FitDesk Pro.{% endif %}</div>
+  </div>
+
+{% if valid %}
+  <script>
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId: '{{ meta_app_id }}',
+        autoLogAppEvents: true,
+        xfbml: false,
+        version: '{{ api_version }}',
+      });
+    };
+  </script>
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+  <script>
+    const sessionToken = {{ session_token_json|safe }};
+    const callbackUrl = {{ callback_url_json|safe }};
+    const statusEl = document.getElementById('statusLine');
+    const btn = document.getElementById('connectBtn');
+    let waSignupData = {};
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text;
+      statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
+    // Meta's Embedded Signup posts this message once the gym owner
+    // finishes picking/creating their WhatsApp Business assets inside
+    // the Meta popup -- see Meta's WhatsApp Embedded Signup docs for the
+    // current exact event shape.
+    window.addEventListener('message', (event) => {
+      if (!event.origin || event.origin.indexOf('facebook.com') === -1) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+          waSignupData = data.data || {};
+        }
+      } catch (e) {
+        // Not a JSON message we care about -- ignore.
+      }
+    });
+
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      setStatus('Opening Meta...', '');
+      FB.login((response) => {
+        if (response.authResponse && response.authResponse.code) {
+          setStatus('Finishing connection...', '');
+          fetch(callbackUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_token: sessionToken,
+              code: response.authResponse.code,
+              waba_id: waSignupData.waba_id || '',
+              phone_number_id: waSignupData.phone_number_id || '',
+            }),
+          })
+            .then((r) => r.json())
+            .then((result) => {
+              if (result.ok) {
+                setStatus('WhatsApp connected! You can close this window and return to FitDesk Pro.', 'success');
+              } else {
+                setStatus(result.message || 'Could not finish connecting WhatsApp.', 'error');
+                btn.disabled = false;
+              }
+            })
+            .catch(() => {
+              setStatus('Could not reach FitDesk Pro to finish connecting. Please try again.', 'error');
+              btn.disabled = false;
+            });
+        } else {
+          setStatus('WhatsApp connection was cancelled.', 'error');
+          btn.disabled = false;
+        }
+      }, {
+        config_id: '{{ meta_configuration_id }}',
+        response_type: 'code',
+        override_default_response_type: true,
+      });
+    });
+  </script>
+{% endif %}
+</body>
+</html>

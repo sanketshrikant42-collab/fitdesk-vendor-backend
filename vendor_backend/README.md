@@ -100,9 +100,19 @@ vendor_backend/
 ├── requirements.txt
 ├── vendor_backend/          # Django project settings
 └── licensing/
-    ├── models.py            # Client, License, SupportQuery
-    ├── admin.py             # your dashboard — colored status badges, actions
-    ├── views.py             # /api/validate-license/, /api/submit-query/
+    ├── models.py               # Client, License, SupportQuery, WhatsAppSendLog,
+    │                           # WhatsAppConfiguration, WhatsAppConnectSession
+    ├── admin.py                # your dashboard — colored status badges, actions
+    ├── views.py                # see API reference below for every endpoint
+    ├── whatsapp_provider.py    # WhatsAppProvider interface + MetaCloudAPIProvider
+    ├── meta_signup.py          # Embedded Signup code->token exchange
+    ├── license_utils.py        # shared license+machine resolution for WhatsApp endpoints
+    ├── crypto_utils.py         # encrypts/decrypts each gym's WhatsApp access token
+    ├── phone_utils.py          # server-side phone validation for WhatsApp sends
+    ├── ratelimit.py            # per-license rate limit for WhatsApp sends
+    ├── templates/licensing/
+    │   └── whatsapp_connect.html  # Embedded Signup landing page (opened in the
+    │                              # gym owner's browser, not the desktop app)
     └── urls.py
 ```
 
@@ -124,3 +134,130 @@ vendor_backend/
 // response
 {"ok": true, "query_id": 1, "message": "Your query has been received..."}
 ```
+
+**GET /api/support-queries/?license_key=FDPX-XXXX-XXXX-XXXX**
+```json
+// response
+{"ok": true, "queries": [{"id": 1, "subject": "...", "message": "...", "status": "open", "created_at": "12 Sep 2026, 03:30 PM", "admin_notes": "", "resolved_at": null}]}
+```
+
+## WhatsApp — every gym connects their OWN Meta WhatsApp Business account
+
+**There is no shared/global WhatsApp credential anywhere in this project.**
+Each `Client` has at most one `WhatsAppConfiguration`, created only by that
+gym owner completing their own Meta Embedded Signup from inside FitDesk Pro
+(Settings → WhatsApp → Connect WhatsApp). Every send/status/disconnect call
+below derives the `Client` strictly from the caller's `license_key` +
+`machine_id` (`licensing/license_utils.py`) — never from anything else in
+the request — so one gym's license can never touch another gym's WhatsApp
+connection, template, or Meta credentials.
+
+**POST /api/send-whatsapp-receipt/** — `multipart/form-data`, not JSON
+```
+license_key, machine_id, phone, message, message_type, document_reference,
+test_mode ("true"|"false"), receipt_pdf (file), customer_name (optional)
+```
+```json
+// response (success)
+{"sent": true, "message": "WhatsApp receipt sent successfully", "provider": "whatsapp_cloud_api", "provider_message_id": "wamid...."}
+// response (failure)
+{"sent": false, "error_code": "invalid_license"|"machine_mismatch"|"invalid_phone"|"invalid_pdf"|"not_configured"|"provider_error"|"rate_limited"|"test_mode", "message": "..."}
+```
+`message_type` is one of `payment_receipt`, `renewal_receipt`, `invoice`,
+`membership_confirmation`. `test_mode: true` validates the license, the
+gym's WhatsApp connection, the phone number and the PDF, and (if
+everything else checks out) makes one harmless read-only Meta call to
+confirm the credentials are still valid — **it never sends a real
+WhatsApp message** (`error_code: "test_mode"` on success, not a real
+failure). Sends the PDF as the header of an approved WhatsApp message
+**template** (`WhatsAppConfiguration.template_name`/`template_language`,
+configurable per gym) — business-initiated messages outside an open
+customer-service window require an approved template; a plain
+document+caption message (the pre-Embedded-Signup approach) will not
+reliably deliver. Rate-limited to 100 sends/hour per license key,
+independently per gym. Every attempt is logged in the admin under
+**Whatsapp send logs**.
+
+**POST /api/whatsapp-status/**
+```json
+// request
+{"license_key": "FDPX-XXXX-XXXX-XXXX", "machine_id": "..."}
+// response
+{"ok": true, "connected": true, "configured": true, "business_name": "PowerFit Gym", "phone_number": "+91 98765 43210", "message": "WhatsApp is connected"}
+```
+Backs FitDesk Pro Settings' connection status display and "Test
+Connection" button. `ok: false` only means the license itself didn't
+resolve; once it does, `connected`/`configured` describe that gym's own
+WhatsApp connection. Never sends a real message. Always `HTTP 200`.
+
+**POST /api/whatsapp/connect/start/**
+```json
+// request
+{"license_key": "...", "machine_id": "..."}
+// response
+{"ok": true, "connect_url": "https://fitdesk-vendor-backend.onrender.com/whatsapp/connect/<token>/", "expires_in": 900}
+```
+The desktop app opens `connect_url` in the user's default browser (Meta's
+Embedded Signup JS SDK needs a real web page, not a native widget). The
+`<token>` is single-use and expires in 15 minutes, and is bound server-side
+to exactly the `Client` resolved from `license_key`+`machine_id` — nothing
+that page or the callback below receives can redirect the result to a
+different gym.
+
+**GET /whatsapp/connect/`<token>`/** — plain HTML, *not* under `/api/`. Hosts
+the Embedded Signup button; on completion its JavaScript posts to the
+callback below and shows "WhatsApp Connected" in the browser tab.
+
+**POST /api/whatsapp/connect/callback/** — called by that page's JS, not by
+the desktop app.
+```json
+// request
+{"session_token": "...", "code": "...", "waba_id": "...", "phone_number_id": "..."}
+// response
+{"ok": true, "message": "WhatsApp connected."}
+```
+Exchanges `code` for an access token via Meta's OAuth token endpoint
+(using this backend's own `META_APP_ID`/`META_APP_SECRET` — never a
+per-gym secret), fetches the phone number's display name/number, and
+saves all of it — token encrypted — onto the `Client` the `session_token`
+was minted for. A missing/expired/already-used session token is rejected
+outright; it can never attach WhatsApp assets to any Client, let alone
+the wrong one.
+
+**POST /api/whatsapp/disconnect/**
+```json
+// request
+{"license_key": "...", "machine_id": "..."}
+// response
+{"ok": true, "message": "WhatsApp disconnected."}
+```
+Clears only the resolved Client's own `WhatsAppConfiguration` (token,
+phone number id, WABA id, business name/number, connection status). Never
+touches the Client, License, billing, or membership data, and never any
+other Client's configuration.
+
+### WhatsApp — environment variables (Render)
+```
+META_APP_ID                     # FitDesk Pro's own Meta App id (from the Meta developer console)
+META_APP_SECRET                 # FitDesk Pro's own Meta App secret
+META_CONFIGURATION_ID           # the Embedded Signup "configuration" created in Meta Business Manager
+META_REDIRECT_URI               # only if Meta's current App setup requires one registered
+META_API_VERSION                # defaults to v20.0 if unset
+WHATSAPP_TOKEN_ENCRYPTION_KEY   # Fernet key encrypting every gym's stored access token -- generate with:
+                                 #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+VENDOR_PUBLIC_BASE_URL          # this backend's own public URL, e.g. https://fitdesk-vendor-backend.onrender.com
+                                 # (used to build the /whatsapp/connect/<token>/ link)
+```
+These are the vendor's OWN app-level Meta configuration -- **not** any
+individual gym's WhatsApp credentials, which live encrypted in each
+`WhatsAppConfiguration` row instead, created only through that gym's own
+Embedded Signup. Leave all of these unset and every WhatsApp endpoint above
+still works safely (`not_configured` / `connected: false` everywhere) --
+gym owners just can't connect yet.
+
+There used to be a single global `WHATSAPP_ACCESS_TOKEN` /
+`WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TEST_PHONE_NUMBER_ID` here from an
+earlier, single-tenant version of this integration. **Those are gone.**
+Using one shared Meta account for every gym is exactly what per-gym
+Embedded Signup replaces — if they're still set in Render, they're now
+inert and can be removed.

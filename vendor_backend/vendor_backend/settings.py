@@ -78,6 +78,58 @@ SERVER_EMAIL = 'noreply@fitdeskpro.local'
 TELEGRAM_BOT_TOKEN = ''   # e.g. '123456789:AAExampleTokenFromBotFather'
 TELEGRAM_CHAT_ID = ''     # e.g. '987654321'
 
+# --- WhatsApp: per-gym Meta Cloud API (licensing/whatsapp_provider.py) --
+# IMPORTANT: there is deliberately NO global WhatsApp access token/phone
+# number here anymore. Every gym owner connects their OWN Meta WhatsApp
+# Business account via Embedded Signup (licensing/views.py's
+# whatsapp_connect_* views); each Client's resulting credentials are
+# stored -- encrypted -- on that Client's own WhatsAppConfiguration row,
+# never in an environment variable. A global WHATSAPP_ACCESS_TOKEN would
+# mean every gym sends through the same Meta account, which is exactly
+# what this architecture exists to avoid.
+#
+# What DOES belong here is the vendor's OWN Meta App configuration --
+# the app FitDesk Pro itself is registered as in Meta's developer
+# console, used only to run the Embedded Signup flow and exchange its
+# resulting authorization code for each gym's own access token:
+META_APP_ID = os.environ.get("META_APP_ID", "")
+META_APP_SECRET = os.environ.get("META_APP_SECRET", "")
+# The Embedded Signup "configuration" created in Meta Business Manager
+# (App Dashboard -> WhatsApp -> Configuration) that defines which
+# WhatsApp assets/permissions the signup flow requests.
+META_CONFIGURATION_ID = os.environ.get("META_CONFIGURATION_ID", "")
+# Registered in the Meta App's Facebook Login settings if Meta requires
+# one for this App's OAuth flow; the Embedded Signup JS SDK flow itself
+# doesn't redirect through this backend, so it's often unused, but kept
+# configurable since Meta's exact requirements here can change.
+META_REDIRECT_URI = os.environ.get("META_REDIRECT_URI", "")
+META_API_VERSION = os.environ.get("META_API_VERSION", "v20.0")
+
+# Symmetric key used to encrypt every gym's WhatsApp access token at
+# rest (licensing/crypto_utils.py). Generate one with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# and set it in Render. Losing/rotating this key makes every already-
+# connected gym's stored token unreadable (they'd need to reconnect) --
+# treat it like any other production secret. Left blank locally is fine
+# for testing everything except an actual token round-trip.
+WHATSAPP_TOKEN_ENCRYPTION_KEY = os.environ.get("WHATSAPP_TOKEN_ENCRYPTION_KEY", "")
+
+# Ed25519 private key (hex-encoded raw bytes) used to sign every
+# /api/validate-license/ response -- see licensing/signing_utils.py for
+# how to generate this keypair and why it must never be regenerated
+# casually once desktop installs are out with the matching public key.
+# Left blank locally is fine for testing everything except an actual
+# signed response (validate_license raises SigningKeyNotConfigured until
+# this is set, exactly like the WhatsApp encryption key above).
+LICENSE_SIGNING_PRIVATE_KEY = os.environ.get("LICENSE_SIGNING_PRIVATE_KEY", "")
+
+# This backend's own public URL, used to build the /whatsapp/connect/
+# <token>/ link the desktop app opens in the user's browser. Falls back
+# to the current request's own host if unset (fine for local testing;
+# set explicitly to https://fitdesk-vendor-backend.onrender.com in
+# Render so the generated link is always correct behind Render's proxy).
+VENDOR_PUBLIC_BASE_URL = os.environ.get("VENDOR_PUBLIC_BASE_URL", "")
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -90,6 +142,16 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'vendor_backend.urls'
+
+# 0001_initial.py generated every model's id as BigAutoField, but this
+# setting was missing here (so the installed Django version's plain
+# AutoField became the actual default) -- `makemigrations` noticed the
+# drift the moment a new model (WhatsAppSendLog) was added and wanted to
+# silently fold in unrelated AlterField ops for Client/License/
+# SupportQuery. Restoring this (Django's own startproject default since
+# 3.2) just realigns future auto-generated ids with what 0001 already
+# committed to; it doesn't rewrite any existing table.
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 TEMPLATES = [
     {
