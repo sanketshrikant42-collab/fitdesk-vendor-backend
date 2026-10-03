@@ -30,9 +30,23 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY", 'django-insecure-)br9ep%oncn2$+sxux7o(rv*hv10yfajb*ws_cm-%b_i3r6ub@'
-)
+# The fallback below is committed to git and therefore PUBLIC -- it may only
+# ever be used for local development. On Render (which always sets
+# RENDER=true) a missing SECRET_KEY, or one equal to this public fallback,
+# stops the app from starting instead of silently running with a known key.
+# Changing SECRET_KEY only logs out Django-admin sessions: license signing
+# (Ed25519), WhatsApp token encryption and cloud-backup key encryption all
+# use their own separate keys.
+_PUBLIC_DEV_ONLY_SECRET_KEY = 'django-insecure-)br9ep%oncn2$+sxux7o(rv*hv10yfajb*ws_cm-%b_i3r6ub@'
+SECRET_KEY = os.environ.get("SECRET_KEY", "").strip()
+if os.environ.get("RENDER", "").lower() == "true":
+    if not SECRET_KEY or SECRET_KEY == _PUBLIC_DEV_ONLY_SECRET_KEY:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "SECRET_KEY must be set to a private value in the Render environment."
+        )
+elif not SECRET_KEY:
+    SECRET_KEY = _PUBLIC_DEV_ONLY_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False") == "True"
@@ -56,6 +70,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'licensing',
+    'cloud_backup',
 ]
 
 # --- Support-query email notifications -------------------------------------
@@ -129,6 +144,34 @@ LICENSE_SIGNING_PRIVATE_KEY = os.environ.get("LICENSE_SIGNING_PRIVATE_KEY", "")
 # set explicitly to https://fitdesk-vendor-backend.onrender.com in
 # Render so the generated link is always correct behind Render's proxy).
 VENDOR_PUBLIC_BASE_URL = os.environ.get("VENDOR_PUBLIC_BASE_URL", "")
+
+# --- Cloud Backup: Cloudflare R2 (cloud_backup app) ---------------------
+# All of these are Render environment variables/secrets -- never commit
+# real values. The desktop app NEVER receives any of them: it gets short-
+# lived presigned URLs for one exact object key instead (see
+# cloud_backup/storage.py). Leaving them blank locally is fine -- every
+# cloud backup endpoint then answers 503 "storage_not_configured" and the
+# desktop keeps its backups local-only, exactly as when offline.
+R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "fitdesk-pro-backups")
+# Optional. Defaults to https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com
+# (override only for a jurisdiction-specific endpoint or local testing).
+R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "")
+# Optional key prefix, e.g. "staging" -- keeps a test deployment's objects
+# separate from production's inside the same bucket. Blank in production.
+R2_OBJECT_PREFIX = os.environ.get("R2_OBJECT_PREFIX", "")
+
+# Fernet key that encrypts every gym's backup key at rest (cloud_backup/
+# keys.py). Generate once, store in Render AND offline. LOSING IT MAKES
+# EXISTING CLOUD BACKUPS UNRESTORABLE ON NEW PCs -- never rotate casually.
+BACKUP_KEY_ENCRYPTION_KEY = os.environ.get("BACKUP_KEY_ENCRYPTION_KEY", "")
+
+CLOUD_BACKUP_RETENTION_DAILY = int(os.environ.get("CLOUD_BACKUP_RETENTION_DAILY", "30"))
+CLOUD_BACKUP_RETENTION_MANUAL = int(os.environ.get("CLOUD_BACKUP_RETENTION_MANUAL", "10"))
+CLOUD_BACKUP_MAX_FILE_MB = int(os.environ.get("CLOUD_BACKUP_MAX_FILE_MB", "512"))
+CLOUD_BACKUP_PRESIGN_EXPIRY_SECONDS = int(os.environ.get("CLOUD_BACKUP_PRESIGN_EXPIRY_SECONDS", "900"))
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -234,3 +277,19 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+
+
+# Logging -- send this backend's own INFO-level events (cloud backup
+# uploads/restores/retention) to stdout so they show up in Render's log
+# stream. botocore is kept at WARNING: its DEBUG output can include
+# request signing details.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        "cloud_backup": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "botocore": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "boto3": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
+}

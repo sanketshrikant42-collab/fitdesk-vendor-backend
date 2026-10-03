@@ -23,6 +23,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('licensing.urls')),
 
+    # Cloud Backup module (cloud_backup app) -- same /api/ prefix and
+    # POST + license_key/machine_id convention as the licensing routes.
+    path('api/backups/', include('cloud_backup.urls')),
+
     # NOT under /api/ -- this is a browser-rendered HTML page (Meta's
     # Embedded Signup JS SDK needs a real web page context), opened by
     # the desktop app in the user's system browser, not called by the

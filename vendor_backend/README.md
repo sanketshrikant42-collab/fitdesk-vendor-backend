@@ -261,3 +261,41 @@ earlier, single-tenant version of this integration. **Those are gone.**
 Using one shared Meta account for every gym is exactly what per-gym
 Embedded Signup replaces — if they're still set in Render, they're now
 inert and can be removed.
+
+---
+
+## Cloud Backup (`cloud_backup` app, Cloudflare R2)
+
+FitDesk Pro desktops back up their local SQLite database every day, encrypt
+it on the PC (AES-256-GCM) and upload it to the private R2 bucket
+`fitdesk-pro-backups` under `gyms/GYM-<id>/backups/YYYY/MM/`. This backend never
+receives the database itself. It authorizes each upload or download with the
+license key and machine id, hands out a 15-minute presigned URL for **one exact
+object key**, verifies what landed in R2, keeps the backup metadata, and applies
+retention (latest 30 verified daily + 10 manual backups per gym).
+
+R2 credentials exist only in this backend's environment. They are never sent
+to the desktop app, returned by an API, or logged.
+
+* Endpoints, licensing behavior, env vars, deployment and rollback:
+  **`CLOUD_BACKUP_DEPLOY.md`**
+* Live R2 check (throwaway `_selftest/` prefix): `python manage.py r2_selftest`
+* Housekeeping (optional): `python manage.py cloud_backup_maintenance`
+* Key check / rotation: `python manage.py check_backup_keys [--rewrap]` (run after every
+  deploy and after any change to `BACKUP_KEY_ENCRYPTION_KEY`)
+* Tests: `python manage.py test cloud_backup` (in-memory fake R2; the S3-protocol
+  tests also run when the test-only `moto` package is installed)
+
+### Cloud Backup — environment variables (Render)
+```
+R2_ACCOUNT_ID                 # Cloudflare account id
+R2_ACCESS_KEY_ID              # bucket-scoped R2 API token (Object Read & Write)
+R2_SECRET_ACCESS_KEY          # secret -- Render env only, never anywhere else
+R2_BUCKET_NAME                # fitdesk-pro-backups
+BACKUP_KEY_ENCRYPTION_KEY     # Fernet key encrypting every gym's backup key ("NEW,OLD" while rotating) -- generate with:
+                              #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+                              # keep an offline copy: losing it makes cloud backups unrestorable on new PCs
+# optional: R2_ENDPOINT, R2_OBJECT_PREFIX, CLOUD_BACKUP_RETENTION_DAILY (30),
+#           CLOUD_BACKUP_RETENTION_MANUAL (10), CLOUD_BACKUP_MAX_FILE_MB (512),
+#           CLOUD_BACKUP_PRESIGN_EXPIRY_SECONDS (900)
+```
