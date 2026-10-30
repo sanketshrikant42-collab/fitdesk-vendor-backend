@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FitDesk Pro</title>
+{% include "fitdesk_ui/theme.html" %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+.hidden{display:none!important}
+.app{display:flex;min-height:100vh}
+aside{width:236px;flex:none;background:var(--nav);color:var(--nav-t);position:sticky;top:0;height:100vh;overflow-y:auto;padding:16px 12px 20px;z-index:30}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 16px}
+.brand .lg{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C6CF2,#5545D0);display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px}
+.brand b{color:#fff;font-size:15px;display:block}.brand small{font-size:10.5px;color:var(--nav-t)}
+.ng{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5B6584;padding:14px 10px 6px}
+aside a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:var(--nav-t);text-decoration:none;font-weight:500;cursor:pointer;font-size:13px}
+aside a svg{flex:none;opacity:.85}
+aside a.on{background:var(--p);color:#fff}aside a.on svg{opacity:1}aside a:hover:not(.on){background:var(--nav2);color:#fff}
+.content{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;height:58px;background:var(--surface);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;padding:0 22px}
+.topbar .tt{font-weight:700;font-size:15px}.topbar .crumb{color:var(--t3);font-size:12px}
+.topbar .sp{flex:1}.topbar select{width:auto;height:32px;font-size:12px}
+.me{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.25}.me .av{width:30px;height:30px;font-size:11px}
+.menu-btn{display:none}
+.page{padding:22px 24px 40px;width:100%;max-width:1320px}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.ph .sub{margin:0}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar .grow{flex:1;min-width:200px}
+.search{position:relative}.search svg{position:absolute;left:10px;top:10px;color:var(--t3)}.search input{padding-left:32px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px;margin-bottom:16px}
+.ck{display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:13.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:500}.ck input{width:auto;height:auto;margin-top:3px}
+.gstbox{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;background:var(--bg2,var(--surface))}.gstsplit>div{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0}.gstsplit{margin-top:6px}.gstsplit>div.tot{font-weight:700;border-top:1px dashed var(--bd);padding-top:6px;margin-top:2px}.gstsplit:empty{display:none}
+.curplan{margin-top:8px;border:1px solid var(--bd);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+button.danger{color:var(--dg-t);border-color:var(--dg-t)}
+.kpi{background:var(--surface);border:1px solid var(--bd);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.kpi span{color:var(--t2);font-size:11.5px;font-weight:500}.kpi b{display:block;font-size:22px;margin-top:4px;letter-spacing:-.02em}
+.kpi.ac{border-left:3px solid var(--p)}
+.split{display:grid;grid-template-columns:1.45fr 1fr;gap:16px;align-items:start}
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.grid .full{grid-column:1/-1}.grid .two{grid-column:span 2}
+.empty{padding:30px 12px;text-align:center;color:var(--t2)}
+.empty b{display:block;color:var(--t1);font-size:14px;margin-bottom:4px}
+.av{width:34px;height:34px;border-radius:50%;background:var(--pl);color:var(--p-t);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.who{display:flex;align-items:center;gap:10px}.who b{display:block}
+.qa{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.qa button{height:auto;padding:14px;justify-content:flex-start;text-align:left;border-radius:14px;flex-direction:column;align-items:flex-start;gap:2px;background:var(--surface)}
+.qa button b{font-size:14px}.qa button span{color:var(--t2);font-weight:400;font-size:12px}
+.sum div{display:flex;justify-content:space-between;padding:5px 0;gap:10px}.sum .tot{border-top:2px solid var(--t1);font-weight:700;margin-top:6px;padding-top:8px;font-size:15px}
+.res{border:1px solid var(--bd);border-radius:12px;padding:12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface2)}
+.meal{border:1px solid var(--bd);border-radius:11px;padding:10px 12px;margin-top:8px;background:var(--surface2)}
+.starter{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.bar{display:flex;align-items:flex-end;gap:8px;height:130px;border-bottom:1px solid var(--bd);padding-top:20px}
+.bar div{background:var(--p);border-radius:5px 5px 0 0;flex:1;position:relative;min-height:3px}.bar span{position:absolute;top:-17px;left:-12px;right:-12px;text-align:center;font-size:10.5px;color:var(--t2)}
+.barl{display:flex;gap:8px}.barl span{flex:1;text-align:center;font-size:10px;color:var(--t3)}
+canvas.sig{border:1.5px dashed var(--bd2);border-radius:10px;background:#fff;touch-action:none;max-width:100%}
+.big-search input{height:48px;font-size:16px;padding-left:40px;border-radius:12px}.big-search svg{top:16px;left:14px}
+.note{background:var(--pl);color:var(--p-t);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.warnbox{background:var(--wnl);color:var(--wn-t);border-radius:10px;padding:10px 12px;font-size:12.5px}
+/* reminders */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{height:32px;border-radius:99px;font-size:12.5px}.tabs button.on{background:var(--p);border-color:var(--p);color:var(--on-p)}
+.tabs button .n{background:var(--row);color:var(--t2);border-radius:99px;padding:0 7px;font-size:11px;margin-left:2px}.tabs button.on .n{background:rgba(255,255,255,.25);color:#fff}
+.rem{border:1px solid var(--bd);border-radius:14px;background:var(--surface);padding:14px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:12px;box-shadow:var(--shadow)}
+.rem.done{opacity:.62}.rem .msgtxt{white-space:pre-wrap;background:var(--surface2);border:1px solid var(--row);border-radius:10px;padding:9px 11px;margin-top:8px;font-size:12.5px;max-height:84px;overflow:hidden;position:relative;cursor:pointer}
+.rem .msgtxt.open{max-height:none}.rem .acts{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:170px}
+.wa{background:#25D366!important;border-color:#25D366!important;color:#fff!important}
+.rep-tbl{overflow-x:auto}.rep-tbl td.num,.rep-tbl th.num{text-align:right;white-space:nowrap}
+@media(max-width:700px){.rem{grid-template-columns:1fr}.rem .acts{flex-direction:row;flex-wrap:wrap}}
+/* diet editor */
+.de-t td{padding:6px 5px;vertical-align:top}.de-t th{padding:7px 5px}.de-t input,.de-t select{height:32px;padding:0 7px}.de-t .de-n{text-align:right}
+.de-h{font-size:11.5px;margin-top:3px;min-height:14px}.de-h a{cursor:pointer}.warn-t{color:var(--wn-t)}.de-v{padding-top:13px!important;color:var(--t1)}
+.de-tot td{font-weight:700;border-top:1.5px solid var(--bd2);background:var(--surface2);padding:8px 5px!important}
+/* modal */
+#md-bg{position:fixed;inset:0;background:var(--overlay);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:6vh 14px;overflow-y:auto}
+#md-bg.on{display:flex}
+.md{background:var(--surface);border:1px solid var(--bd);border-radius:16px;width:min(680px,100%);box-shadow:var(--shadow-lg);display:flex;flex-direction:column}
+.md.wide{width:min(860px,100%)}
+.md-h{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--bd)}.md-h h3{margin:0;font-size:16px;flex:1}
+.md-b{padding:18px 20px}.md-f{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--bd);background:var(--surface2);border-radius:0 0 16px 16px;flex-wrap:wrap}
+.md-f .left{margin-right:auto}
+.x{width:32px;height:32px;padding:0;font-size:18px}
+/* wizard */
+.steps{display:flex;gap:6px;margin-bottom:18px}
+.steps div{flex:1;display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--t3);font-weight:600}
+.steps div i{height:4px;border-radius:4px;background:var(--row)}
+.steps div.on{color:var(--p-t)}.steps div.on i,.steps div.done i{background:var(--p)}.steps div.done{color:var(--t2)}
+.sec{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:18px 0 8px}
+.sec:first-child{margin-top:0}
+/* member picker */
+.mp{position:relative}
+.mp-list{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--shadow-lg);z-index:70;max-height:300px;overflow-y:auto;display:none}
+.mp-list.on{display:block}
+.mp-it{display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--row)}.mp-it:last-child{border-bottom:0}
+.mp-it.hl,.mp-it:hover{background:var(--hover)}.mp-it .av{width:30px;height:30px;font-size:11px}
+.mp-it .nm{flex:1;min-width:0}.mp-it .nm b{display:block;font-size:13px}.mp-it .nm span{font-size:11.5px;color:var(--t2)}
+.mp-sel{display:flex;align-items:center;gap:10px;border:1px solid var(--p);background:var(--pl);border-radius:10px;padding:6px 8px;min-height:36px}
+.mp-sel .nm{flex:1;min-width:0;line-height:1.25}.mp-sel .nm b{font-size:13px}.mp-sel .nm span{font-size:11.5px;color:var(--t2);display:block}
+.mp-sel .av{width:28px;height:28px;font-size:10.5px;background:var(--surface);}
+.mp-none{padding:12px;color:var(--t2);font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chips .chip button{height:auto;border:0;background:none;padding:0 0 0 4px;color:inherit;font-size:12px}
+@media(max-width:1080px){.split,.split2{grid-template-columns:1fr}}
+@media(max-width:900px){aside{position:fixed;left:-250px;transition:left .2s;height:100vh}.app.nav-open aside{left:0;box-shadow:var(--shadow-lg)}
+ .menu-btn{display:inline-flex}.page{padding:16px}.topbar{padding:0 12px}.me .nm2,.topbar .crumb{display:none}.theme-btn span{display:none}}
+</style></head><body>
+<div class="app" id="app">
+<aside id="nav"></aside>
+<div class="content">
+ <div class="topbar">
+  <button class="ghost menu-btn x" onclick="$('app').classList.toggle('nav-open')" title="Menu">☰</button>
+  <div><div class="tt" id="ptitle">Dashboard</div><div class="crumb" id="pcrumb">FitDesk Pro · test app</div></div>
+  <div class="sp"></div>
+  <select id="as" onchange="who()" title="Which signed-in person this page acts as"><option value="o_tok">Acting as: owner</option><option value="s_tok">Acting as: staff device</option></select>
+  <button class="theme-btn" data-theme-btn onclick="fdToggleTheme()"></button>
+  <div class="me" id="me"></div>
+ </div>
+ <main class="page" id="main">
+ <div class="msg" id="gmsg"></div>
+
+ <!-- DASHBOARD -->
+ <section data-page="dash">
+  <div class="ph"><div><h2 id="hello">Dashboard</h2><p class="sub" id="dash-sub">Today at a glance.</p></div></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="qa">
+   <button onclick="go('desk')"><b>Check in a member</b><span>Search by name, mobile or code</span></button>
+   <button onclick="openAddMember()"><b>Add a member</b><span>Details, fitness and plan in one go</span></button>
+   <button onclick="go('bill')"><b>New bill / renewal</b><span>Receipt, UPI link and WhatsApp</span></button>
+   <button onclick="go('rem')" id="qa-rem"><b>Today's reminders</b><span id="qa-rem-s">Renewals, dues, birthdays to send</span></button>
+  </div>
+  <div class="split2"><div class="card"><h3>Expiring in the next 7 days</h3><table><tbody id="dexp"></tbody></table></div>
+   <div class="card"><h3>Members with dues</h3><table><tbody id="ddue"></tbody></table></div></div>
+ </section>
+
+ <!-- FRONT DESK -->
+ <section data-page="desk" class="hidden">
+  <div class="ph"><div><h2>Front desk check-in</h2><p class="sub">Type a name, mobile number or member code. Results appear as you type.</p></div></div>
+  <div class="card"><div class="search big-search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="dq" placeholder="Search member…" oninput="deb('desk',lookup,250)" autocomplete="off"></div><div id="dres"></div><div class="msg" id="dmsg"></div></div>
+  <div class="card"><h3>Today's check-ins <span class="muted" id="dcount"></span></h3><table><thead><tr><th>Member</th><th>Time</th><th>By</th><th>How</th></tr></thead><tbody id="dlist"></tbody></table></div>
+ </section>
+
+ <!-- MEMBERS -->
+ <section data-page="members" class="hidden">
+  <div class="ph"><div><h2>Members</h2><p class="sub">Click a member to open their full profile.</p></div><button class="pr" onclick="openAddMember()">+ Add member</button></div>
+  <div class="card">
+   <div class="toolbar"><div class="search grow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="mq" placeholder="Search name, mobile or code" oninput="deb('mem',loadMembers,250)"></div>
+    <select id="mst" style="width:170px" onchange="loadMembers()"><option value="">All members</option><option value="archived">Archived</option><option value="active">Active</option><option value="expiring">Expiring in 7 days</option><option value="expired">Expired</option><option value="frozen">Frozen</option><option value="dues">With dues</option><option value="no_plan">No plan yet</option></select></div>
+   <table><thead><tr><th>Member</th><th>Plan</th><th>Trainer</th><th>Ends</th><th>Status</th></tr></thead><tbody id="mlist"></tbody></table>
+  </div>
+ </section>
+
+ <!-- NEW BILL -->
+ <section data-page="bill" class="hidden">
+  <div class="ph"><div><h2>New bill / renewal</h2><p class="sub">The server works out dates, GST and the trainer's share, and gives the receipt number.</p></div></div>
+  <div class="split"><div class="card">
+   <div class="grid">
+    <div class="full"><label>Member</label><div id="mp_bill"></div></div>
+    <div><label>Type</label><select id="bk" onchange="quote()"><option value="new">New</option><option value="renewal">Renewal</option></select></div>
+    <div class="two"><label>Plan</label><select id="bp" onchange="planPicked()"></select></div>
+    <div id="btw" class="hidden"><label>Trainer</label><select id="bt" onchange="quote()"></select></div>
+    <div id="bfw" class="full hidden"><label id="bfl">Other members covered</label><div id="mp_fam"></div><div class="chips" id="bfam"></div></div>
+    <div><label>Start date</label><input id="bs" type="date" onchange="quote()"></div>
+    <div><label>Discount ₹</label><input id="bd" value="0" inputmode="decimal" oninput="quote()"></div>
+    <div><label>Add GST</label><select id="bg" onchange="quote()"><option value="0">No</option><option value="1">Yes</option></select><div class="muted hidden" id="bgi" style="font-size:12px;margin-top:4px">This plan's price already includes GST.</div></div>
+    <div><label>Paid now ₹</label><input id="ba" value="0" inputmode="decimal" oninput="quote()"></div>
+    <div><label>Payment mode</label><select id="bmo" onchange="refShow()"><option>UPI</option><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option></select></div>
+    <div id="brw"><label>Reference (UPI / UTR)</label><input id="br"></div>
+   </div>
+   <div class="row"><button class="pr" onclick="saveBill()">Save &amp; get receipt</button><button class="ghost" onclick="resetBill()">Clear</button></div><div class="msg" id="bmsg"></div></div>
+   <div class="card"><h3>Summary</h3><div class="sum" id="bsum"><div class="muted">Pick a member and a plan.</div></div><div id="bout"></div></div></div>
+ </section>
+
+ <!-- BILLS -->
+ <section data-page="bills" class="hidden">
+  <div class="ph"><div><h2>Bills &amp; dues</h2><p class="sub">Collect dues, open receipts, send on WhatsApp.</p></div></div>
+  <div class="card"><div class="toolbar"><div class="search grow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="xq" placeholder="Receipt no., name or mobile" oninput="deb('bills',loadBills,250)"></div>
+   <select id="xs" style="width:170px" onchange="loadBills()"><option value="">All bills</option><option>Paid</option><option>Partially Paid</option><option>Pending</option></select></div>
+   <table><thead><tr><th>Receipt</th><th>Member</th><th>Plan</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody id="xlist"></tbody></table></div>
+ </section>
+
+ <!-- PLANS -->
+ <section data-page="plans" class="hidden">
+  <div class="ph"><div><h2>Membership plans</h2><p class="sub">Freeze limits, couple/family size and PT session packs are set per plan.</p></div><button class="pr" onclick="planForm()">+ Add plan</button></div>
+  <div class="card"><table><thead><tr><th>Plan</th><th>Duration</th><th>Fee</th><th>Personal training</th><th>Covers</th><th>Freeze</th><th></th></tr></thead><tbody id="plist"></tbody></table></div>
+ </section>
+
+ <!-- TRAINERS -->
+ <section data-page="trainers" class="hidden">
+  <div class="ph"><div><h2>Trainers</h2><p class="sub">Gym employees appear here automatically when you add them in <a class="link" onclick="go('staff')" style="cursor:pointer">Staff</a> with the department "Trainer". Use "Add trainer" only for freelance trainers.</p></div><button onclick="trainerForm()">+ Add freelance trainer</button></div>
+  <div class="card"><div class="toolbar"><select id="tst" style="width:170px" onchange="loadTrainers()"><option value="active">Active trainers</option><option value="inactive">Inactive</option><option value="">All</option></select></div>
+   <table><thead><tr><th>Trainer</th><th>Type</th><th>Sign-in</th><th>Status</th></tr></thead><tbody id="tlist"></tbody></table></div>
+ </section>
+
+ <!-- STAFF -->
+ <section data-page="staff" class="hidden">
+  <div class="ph"><div><h2>Staff</h2><p class="sub">Click a person for their profile, attendance calendar, payroll and advances.</p></div><button class="pr" onclick="staffForm()">+ Add staff</button></div>
+  <div class="card"><div class="toolbar"><select id="sst" style="width:170px" onchange="loadStaff()"><option value="active">Active staff</option><option value="inactive">Left / inactive</option><option value="">All</option></select></div>
+   <table><thead><tr><th>Staff</th><th>Role</th><th>Joined</th><th>Salary</th><th>Trainer</th></tr></thead><tbody id="slist"></tbody></table></div>
+ </section>
+
+ <!-- STAFF ATTENDANCE -->
+ <section data-page="att" class="hidden">
+  <div class="ph"><div><h2>Staff attendance</h2><p class="sub">Unmarked Sundays count as paid weekly off. The owner or a manager marks attendance.</p></div></div>
+  <div class="card"><div class="toolbar"><button class="sm" onclick="attDay(-1)">‹</button><input type="date" id="ad" style="width:170px" onchange="loadAtt()"><button class="sm" onclick="attDay(1)">›</button><span class="grow"></span><button onclick="allPresent()">Mark all present</button><button class="pr" onclick="saveAtt()">Save attendance</button></div>
+   <table><thead><tr><th>Staff</th><th>Status</th><th>In</th><th>Out</th><th>Remarks</th></tr></thead><tbody id="alist"></tbody></table><div class="msg" id="amsg"></div></div>
+ </section>
+
+ <!-- PAYROLL -->
+ <section data-page="pay" class="hidden">
+  <div class="ph"><div><h2>Payroll</h2><p class="sub">Same rules as v1.2.0: daily rate × paid days, whole rupees, advances deducted, PT commission added.</p></div><input type="month" id="pm" style="width:170px" onchange="loadPay()"></div>
+  <div class="kpis" id="payk"></div>
+  <details class="card" style="padding:12px 16px"><summary style="cursor:pointer;font-weight:600">How salary is worked out from attendance</summary><div class="muted" style="margin-top:10px;line-height:1.6">
+   <b>Daily rate</b> = monthly salary ÷ days in the month (“Calendar Days”) or ÷ 30 (“Fixed 30 Days”).<br>
+   <b>Paid days</b> = Present + ½ for each Half Day + Paid Leave + Weekly Off + Holiday (if “Pay staff for Holiday days” is on in Settings) + every Sunday left unmarked.<br>
+   <b>Not paid:</b> Absent, and any other day left unmarked. Days not marked are flagged below so they can be fixed before paying.<br>
+   <b>Salary</b> = daily rate × paid days, rounded to whole rupees, minus advances and any deduction. PT commission for trainers is added on top.<br>
+   Example: ₹30,000, 30-day month, 22 Present + 2 Half Day + 4 Sundays + 1 Holiday + 1 Absent → 28 paid days → ₹28,000.</div></details>
+  <div class="card"><table><thead><tr><th>Staff</th><th>Paid days</th><th>Earned</th><th>Advance</th><th>Salary</th><th>PT comm.</th><th>Total</th><th></th></tr></thead><tbody id="paylist"></tbody></table><div class="msg" id="paymsg"></div></div>
+ </section>
+
+ <!-- EXPENSES -->
+ <section data-page="exp" class="hidden">
+  <div class="ph"><div><h2>Expenses</h2><p class="sub">Owner and manager only. Only the owner can delete.</p></div><button class="pr" onclick="expForm()">+ Add expense</button></div>
+  <div class="kpis" id="ek"></div>
+  <div class="card"><table><thead><tr><th>Date</th><th>Expense</th><th>Category</th><th>Amount</th><th>Mode</th><th>Status</th><th></th></tr></thead><tbody id="elist"></tbody></table></div>
+ </section>
+
+ <!-- ENQUIRIES -->
+ <section data-page="enq" class="hidden">
+  <div class="ph"><div><h2>Enquiries &amp; referrals</h2><p class="sub">Leads, follow-ups and referral rewards.</p></div><button class="pr" onclick="enqForm()">+ New enquiry</button></div>
+  <div class="kpis" id="qk"></div>
+  <div class="card"><div class="toolbar"><select id="qv" style="width:180px" onchange="loadEnq()"><option value="open">Open</option><option value="due_today">Due today</option><option value="overdue">Overdue</option><option value="mine">Assigned to me</option><option>Converted</option><option>Lost</option></select></div>
+   <table><thead><tr><th>Enquiry</th><th>Source</th><th>Priority</th><th>Status</th><th>Next follow-up</th></tr></thead><tbody id="qlist"></tbody></table></div>
+ </section>
+
+ <!-- DIET -->
+ <section data-page="diet" class="hidden">
+  <div class="ph"><div><h2>Diet &amp; nutrition</h2><p class="sub">Give a ready plan, change one to suit the member, or build your own. Trainers only see their own clients.</p></div>
+   <div class="row" style="margin:0"><button id="d-foods" onclick="foodLib()">Food list</button><button class="pr" onclick="dietEditor()">+ New custom plan</button></div></div>
+  <div class="split"><div class="card"><div class="toolbar"><h3 style="margin:0">Diet plans</h3><span class="grow"></span><select id="dv" style="width:160px" onchange="loadDiet()"><option value="">All plans</option><option>Active</option><option>Draft</option><option value="review_due">Review due</option><option>Completed</option><option value="Archived">Removed</option></select></div>
+    <table><thead><tr><th>Member</th><th>Plan</th><th>Status</th><th>Review</th><th></th></tr></thead><tbody id="dlist2"></tbody></table></div>
+   <div class="card"><h3>Give a member a plan</h3><div class="grid"><div class="full"><label>Member</label><div id="mp_diet"></div><div id="dcur"></div></div>
+    <div><label>Goal</label><select id="dg" onchange="loadStarters()"><option>Weight Loss</option><option>Muscle Gain</option><option>Maintenance</option><option>General Fitness</option></select></div>
+    <div><label>Diet type</label><select id="dt" onchange="loadStarters()"><option>Vegetarian</option><option>Eggetarian</option><option>Non-vegetarian</option><option>Vegan</option></select></div></div>
+    <div class="tabs" style="margin:12px 0 0"><button id="dtab-s" class="on" onclick="DTAB='s';loadStarters()">Ready-made plans</button><button id="dtab-t" onclick="DTAB='t';loadStarters()">Our gym's templates</button></div>
+    <div id="dstart" style="margin-top:6px"></div><div class="msg" id="dietmsg"></div></div></div>
+ </section>
+
+ <!-- PROGRESS -->
+ <section data-page="prog" class="hidden">
+  <div class="ph"><div><h2>Progress tracking</h2><p class="sub">Measurements and photos over time. A new weight also updates the member's fitness profile.</p></div></div>
+  <div class="card" style="max-width:560px"><label>Member</label><div id="mp_prog"></div></div>
+  <div id="progbody" class="hidden"><div class="split"><div class="card"><h3>History</h3><div id="pgchart"></div><table style="margin-top:12px"><thead><tr><th>Date</th><th>Weight</th><th>Waist</th><th>Body fat</th><th>Photo</th><th>By</th></tr></thead><tbody id="pglist"></tbody></table></div>
+   <div class="card"><h3>Add a new entry</h3><div class="grid"><div><label>Date</label><input type="date" id="pg_date"></div><div><label>Weight (kg)</label><input id="pg_weight_kg" inputmode="decimal"></div><div><label>Body fat %</label><input id="pg_body_fat_percent" inputmode="decimal"></div><div><label>Chest (cm)</label><input id="pg_chest_cm" inputmode="decimal"></div><div><label>Waist (cm)</label><input id="pg_waist_cm" inputmode="decimal"></div><div><label>Hips (cm)</label><input id="pg_hips_cm" inputmode="decimal"></div><div><label>Arms (cm)</label><input id="pg_arms_cm" inputmode="decimal"></div><div><label>Thighs (cm)</label><input id="pg_thighs_cm" inputmode="decimal"></div><div class="full"><label>Photo (optional)</label><input type="file" id="pg_photo" accept="image/*" style="padding-top:6px"></div></div>
+    <div class="row"><button class="pr" onclick="addProg()">Save entry</button></div><div class="msg" id="pgmsg"></div></div></div></div>
+ </section>
+
+ <!-- CONSENT -->
+ <section data-page="consent" class="hidden">
+  <div class="ph"><div><h2>Consent &amp; health form</h2><p class="sub">Signed at joining on the front-desk PC or a tablet. The exact text agreed to is saved with the signature.</p></div></div>
+  <div class="card" style="max-width:560px"><label>Member</label><div id="mp_con"></div></div>
+  <div id="conbody" class="hidden"><div class="split"><div class="card"><h3>Form</h3><p id="ctext" class="muted" style="white-space:pre-wrap;margin-top:0"></p>
+   <div class="grid"><div><label>Heart condition?</label><select id="ch"><option value="0">No</option><option value="1">Yes</option></select></div><div><label>Recent injury or surgery?</label><select id="ci"><option value="0">No</option><option value="1">Yes</option></select></div><div><label>Signed name</label><input id="cn"></div></div>
+   <div style="margin-top:12px"><label>Signature</label><canvas id="sig" class="sig" width="460" height="130"></canvas><div class="row" style="margin-top:6px"><button class="sm" onclick="clearSig()">Clear</button><button class="pr" onclick="signConsent()">Sign &amp; save</button></div></div><div class="msg" id="cmsg"></div></div>
+   <div class="card"><h3>Signed forms</h3><div id="csigned"></div></div></div></div>
+ </section>
+
+ <!-- REMINDERS -->
+ <section data-page="rem" class="hidden">
+  <div class="ph"><div><h2>Today's reminders</h2><p class="sub" id="rem-sub">Prepared every morning by the server. Tap “Send on WhatsApp”: it opens WhatsApp with the message ready, and marks it sent.</p></div>
+   <div class="row" style="margin:0"><input type="date" id="rem-date" style="width:160px" onchange="loadRem()"><button onclick="runRem()" title="Safe to repeat: nothing is made twice">Check again now</button></div></div>
+  <div class="tabs" id="rem-tabs"></div>
+  <div class="toolbar"><select id="rem-st" style="width:160px" onchange="renderRem()"><option value="pending">Still to send</option><option value="">All</option><option value="sent">Sent / done</option><option value="skipped">Skipped</option></select><span class="grow"></span><span class="muted" id="rem-ran" style="font-size:12px"></span></div>
+  <div id="rem-older"></div><div id="rem-list"></div><div class="msg" id="rem-msg"></div>
+ </section>
+
+ <!-- REPORTS -->
+ <section data-page="rep" class="hidden">
+  <div class="ph"><div><h2>Reports</h2><p class="sub">Worked out on the server from live data. Download any report as Excel.</p></div><button class="pr" id="rep-xl" onclick="repExport()">Download Excel</button></div>
+  <div class="tabs" id="rep-tabs"></div>
+  <div class="card"><div class="toolbar" style="margin:0"><label style="margin:0">From</label><input type="date" id="rep-from" style="width:160px" onchange="loadRep()"><label style="margin:0">To</label><input type="date" id="rep-to" style="width:160px" onchange="loadRep()">
+   <select id="rep-preset" style="width:170px" onchange="repPreset(this.value)"><option value="">Quick pick…</option><option value="today">Today</option><option value="month">This month</option><option value="last">Last month</option><option value="q">Last 3 months</option><option value="fy">This financial year (Apr–Mar)</option></select>
+   <select id="rep-group" style="width:130px" class="hidden" onchange="loadRep()"><option value="day">By day</option><option value="month">By month</option></select></div></div>
+  <div id="rep-body"></div>
+ </section>
+
+ <!-- SETTINGS -->
+ <section data-page="settings" class="hidden">
+  <div class="ph"><div><h2>Gym settings</h2><p class="sub">Used on every device: receipts, GST, UPI, codes and payroll rules. Only the owner can change these.</p></div><button class="pr" onclick="saveSettings()">Save settings</button></div>
+  <div class="msg" id="smsg"></div><div id="setbody"></div>
+ </section>
+
+ <!-- SUPPORT -->
+ <section data-page="sup" class="hidden">
+  <div class="ph"><div><h2>Support</h2><p class="sub">Tickets go to FitDesk support, signed with the person and device.</p></div><button class="pr" onclick="ticketForm()">+ New ticket</button></div>
+  <div class="card"><table><thead><tr><th>Ticket</th><th>Category</th><th>Status</th><th>Raised</th></tr></thead><tbody id="suplist"></tbody></table></div>
+ </section>
+ </main>
+</div></div>
+
+<div id="md-bg" onmousedown="if(event.target===this)closeModal()"><div class="md" id="md"><div class="md-h"><h3 id="md-t"></h3><button class="ghost x" onclick="closeModal()" title="Close">×</button></div><div class="md-b" id="md-b"></div><div class="md-f" id="md-f"></div></div></div>
+
+<script>
+/* ============================== CORE ============================== */
+const API="/api/v1/";const $=id=>document.getElementById(id);
+const esc=v=>v==null?"":String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tok=()=>{try{return JSON.parse(localStorage.getItem($("as").value))}catch(e){return null}};
+async function call(m,u,b,form){const h=tok()?{Authorization:"Bearer "+tok()}:{};if(!form)h["Content-Type"]="application/json";let r;try{r=await fetch(API+u,{method:m,headers:h,body:form||(b?JSON.stringify(b):undefined)})}catch(e){return{ok:false,status:0,message:"Can't reach the server. Is it running?"}}let j={};try{j=await r.json()}catch(e){}return{status:r.status,...j}}
+const err=j=>j.message||("Something went wrong ("+j.status+")");
+function say(id,t,ok){const m=$(id);if(!m)return;m.textContent=t;m.className="msg show "+(ok?"ok":"err");if(ok)setTimeout(()=>{if(m.textContent===t)m.className="msg"},5000)}
+function fail(j,id){say(id||"gmsg",err(j));return true}
+const rs=x=>"₹"+Number(x||0).toLocaleString("en-IN",{maximumFractionDigits:2});
+const CH={active:"c-ok",Paid:"c-ok",Present:"c-ok",Active:"c-ok",Converted:"c-ok",resolved:"c-ok",frozen:"c-wn",upcoming:"c-wn",expiring:"c-wn","Partially Paid":"c-wn","Half Day":"c-wn",Draft:"c-wn",Warm:"c-wn",open:"c-wn",Pending:"c-dg",expired:"c-dg",cancelled:"c-dg",Absent:"c-dg",inactive:"c-dg",Lost:"c-dg",Hot:"c-dg",archived:"c-dg",Removed:"c-dg",Completed:"c-p"};
+const LBL={no_plan:"No plan",active:"Active",expired:"Expired",frozen:"Frozen",upcoming:"Starts soon",cancelled:"Cancelled",inactive:"Inactive",archived:"Archived",Archived:"Removed",expiring:"Expiring"};
+const chip=(t,c)=>`<span class="chip ${c||CH[t]||""}">${esc(LBL[t]||t)}</span>`;
+const ini=n=>(n||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const pad=n=>String(n).padStart(2,"0");
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const fmtD=s=>s?new Date(s+(s.length===10?"T00:00:00":"")).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"—";
+const empty=(cols,t,s)=>`<tr><td colspan=${cols}><div class="empty"><b>${t}</b>${s||""}</div></td></tr>`;
+const T={};function deb(k,f,ms){clearTimeout(T[k]);T[k]=setTimeout(f,ms)}
+function denied(el,j,cols){const h=`<div class="empty"><b>${j.status===403?"Not available for your role":"Couldn't load"}</b>${esc(err(j))}</div>`;el.innerHTML=cols?`<tr><td colspan=${cols}>${h}</td></tr>`:h}
+let ME=null,GYM=null;
+
+/* ============================== NAV ============================== */
+const IC={dash:"M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z",desk:"M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",members:"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+ bill:"M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",bills:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8",plans:"M20 7h-9M14 17H5M17 17a3 3 0 1 0 0 .01M7 7a3 3 0 1 0 0 .01",
+ trainers:"M6.5 6.5h11M6.5 17.5h11M3 9.5v5M21 9.5v5M6.5 4v16M17.5 4v16",staff:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M19 8v6M22 11h-6",att:"M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+ pay:"M2 7h20v12H2zM2 11h20M6 15h4",exp:"M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z",enq:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+ diet:"M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4zM6 1v3M10 1v3M14 1v3",prog:"M22 12h-4l-3 9L9 3l-3 9H2",consent:"M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z",
+ settings:"M12 15a3 3 0 1 0 0-.01M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0-1.17-2.82H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 2.82-1.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 2.82 1.17l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 21 10.91V11a2 2 0 1 1 0 4h-.09z",
+ sup:"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01",team:"M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6",
+ rem:"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0",rep:"M18 20V10M12 20V4M6 20v-6"};
+const NAV=[["",[["dash","Dashboard"]]],["Front desk",[["desk","Check-in"],["rem","Today's reminders"],["enq","Enquiries"]]],["Members",[["members","Members"],["prog","Progress"],["diet","Diet & nutrition"],["consent","Consent forms"]]],
+ ["Money",[["bill","New bill / renewal"],["bills","Bills & dues"],["plans","Plans"],["exp","Expenses"],["rep","Reports"]]],["Team",[["trainers","Trainers"],["staff","Staff"],["att","Staff attendance"],["pay","Payroll"]]],["Gym",[["settings","Settings"],["sup","Support"]]]];
+const TITLE={};NAV.forEach(([g,it])=>it.forEach(([k,l])=>TITLE[k]=[l,g]));
+const svg=k=>`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${IC[k]}"/></svg>`;
+$("nav").innerHTML=`<div class="brand"><div class="lg">F</div><div><b>FitDesk Pro</b><small>Test app · local only</small></div></div>`+NAV.map(([g,it])=>(g?`<div class="ng">${g}</div>`:"")+it.map(([k,l])=>`<a data-p="${k}" href="#${k}">${svg(k)}${esc(l)}</a>`).join("")).join("")+
+ `<div class="ng">Accounts</div><a href="../">${svg("team")}Sign-in, team &amp; devices</a>`;
+const LOAD={dash:loadDash,desk:loadDesk,members:loadMembers,bill:loadBillPage,bills:loadBills,plans:loadPlans,trainers:loadTrainers,staff:loadStaff,att:loadAtt,pay:loadPay,exp:loadExp,enq:loadEnq,diet:loadDiet,prog:()=>0,consent:()=>0,settings:loadSettings,sup:loadSup,rem:loadRem,rep:loadRep};
+const NEED={desk:["attendance"],rem:["receipts"],enq:["enquiries"],members:["members"],prog:["members"],diet:["diet"],consent:["members"],bill:["billing","add"],bills:["billing"],plans:["plans"],exp:["expenses"],rep:["reports"],trainers:["trainers"],staff:["staff"],att:["staff"],pay:["salaries"],sup:["support"]};
+const can=(m,a)=>!!(ME&&(ME.role==="owner"||(ME.permissions[m]||[]).includes(a||"view")));
+function navPerms(){document.querySelectorAll("#nav a[data-p]").forEach(a=>{const n=NEED[a.dataset.p];a.classList.toggle("hidden",!!n&&!can(n[0],n[1]))});
+ document.querySelectorAll("#nav .ng").forEach(g=>{let el=g.nextElementSibling,any=false;while(el&&!el.classList.contains("ng")){if(el.matches("a")&&!el.classList.contains("hidden"))any=true;el=el.nextElementSibling}g.classList.toggle("hidden",!any)})}
+function go(p){if(location.hash==="#"+p)show(p);else location.hash=p}
+function show(p){if(!LOAD[p])p="dash";document.querySelectorAll("#nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));document.querySelectorAll("section[data-page]").forEach(s=>s.classList.toggle("hidden",s.dataset.page!==p));
+ $("ptitle").textContent=TITLE[p][0];$("pcrumb").textContent=(TITLE[p][1]?TITLE[p][1]+" · ":"")+(GYM?GYM.name:"FitDesk Pro");$("gmsg").className="msg";$("app").classList.remove("nav-open");window.scrollTo(0,0);if(ME)LOAD[p]()}
+window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
+async function who(){const j=await call("GET","me/");if(!j.ok){ME=null;GYM=null;$("me").innerHTML=`<span class="chip c-dg">Not signed in</span>`;
+  document.querySelectorAll("section[data-page]").forEach(s=>s.classList.add("hidden"));$("gmsg").innerHTML=`<b>Not signed in.</b> Open <a class="link" href="../">Sign-in, team &amp; devices</a>, sign in there, then come back.`;$("gmsg").className="msg show err";return}
+ ME=j.user;GYM=j.gym;navPerms();brandLogo();$("me").innerHTML=`<div class="av">${ini(ME.name)}</div><div class="nm2"><b>${esc(ME.name)}</b><br><span class="muted">${esc(ME.role)} · ${esc(GYM.name)}</span></div>`;$("hello").textContent=`Hello, ${ME.name.split(" ")[0]}`;show(location.hash.slice(1)||"dash")}
+
+/* ============================== MODAL ============================== */
+function modal(title,body,foot,wide){$("md-t").innerHTML=title;$("md-b").innerHTML=body;$("md-f").innerHTML=foot||"";$("md-f").classList.toggle("hidden",!foot);$("md").classList.toggle("wide",!!wide);$("md-bg").classList.add("on");setTimeout(()=>{const f=$("md-b").querySelector("input:not([type=hidden]),select,textarea");if(f&&!f.closest("[data-nofocus]"))f.focus()},50)}
+function closeModal(){$("md-bg").classList.remove("on")}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("md-bg").classList.contains("on")&&!document.querySelector(".mp-list.on"))closeModal()});
+const F=(id,l,v,o)=>{o=o||{};const a=`id="${id}"${o.ph?` placeholder="${esc(o.ph)}"`:""}${o.im?` inputmode="${o.im}"`:""}${o.list?` list="${o.list}"`:""}`;
+ const w=o.cls?` class="${o.cls}"`:"";if(o.opts)return `<div${w}><label>${l}</label><select ${a}>${o.opts.map(x=>{const [val,lab]=Array.isArray(x)?x:[x,x];return `<option value="${esc(val)}" ${String(val)===String(v??"")?"selected":""}>${esc(lab)}</option>`}).join("")}</select></div>`;
+ if(o.ta)return `<div class="${o.cls||"full"}"><label>${l}</label><textarea ${a}>${esc(v)}</textarea></div>`;return `<div${w}><label>${l}</label><input ${a} type="${o.type||"text"}" value="${esc(v)}"></div>`};
+const V=id=>{const e=$(id);return e?e.value.trim():""};
+
+/* ============================== MEMBER PICKER ============================== */
+/* mpInit(containerId,{onPick,onClear,placeholder}) — search members by name, mobile or code. */
+const MP={};
+function mpInit(cid,o){o=o||{};MP[cid]={sel:null,o,items:[],hl:-1};mpRender(cid)}
+function mpRender(cid){const s=MP[cid],el=$(cid);if(!el)return;
+ if(s.sel){const m=s.sel;el.innerHTML=`<div class="mp-sel"><div class="av">${ini(m.name)}</div><div class="nm"><b>${esc(m.name)}</b><span>${esc(m.code)} · ${esc(m.phone)}${m.plan?" · "+esc(m.plan):""}</span></div>${m.status?chip(m.status):""}<button class="sm ghost" onclick="mpClear('${cid}')">Change</button></div>`;return}
+ el.innerHTML=`<div class="mp"><div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="${cid}_q" autocomplete="off" placeholder="${esc(s.o.placeholder||"Type a name, mobile or member code")}"></div><div class="mp-list" id="${cid}_l"></div></div>`;
+ const q=$(cid+"_q");q.oninput=()=>deb("mp"+cid,()=>mpSearch(cid),200);q.onfocus=()=>mpSearch(cid);q.onkeydown=e=>mpKey(cid,e);q.onblur=()=>setTimeout(()=>{const l=$(cid+"_l");if(l)l.classList.remove("on")},180)}
+async function mpSearch(cid){const s=MP[cid],q=$(cid+"_q");if(!q)return;const j=await call("GET","members/?q="+encodeURIComponent(q.value.trim()));const l=$(cid+"_l");if(!l)return;
+ if(!j.ok){l.innerHTML=`<div class="mp-none">${esc(err(j))}</div>`;l.classList.add("on");return}
+ s.items=(j.members||[]).filter(m=>!(s.o.exclude&&s.o.exclude().includes(m.id))).slice(0,8);s.hl=s.items.length?0:-1;
+ l.innerHTML=s.items.map((m,i)=>`<div class="mp-it ${i===0?"hl":""}" onmousedown="event.preventDefault();mpPick('${cid}',${i})"><div class="av">${ini(m.name)}</div><div class="nm"><b>${esc(m.name)}</b><span>${esc(m.code)} · ${esc(m.phone)}${m.plan?" · "+esc(m.plan):""}</span></div>${chip(m.status)}</div>`).join("")||`<div class="mp-none">No member matches “${esc(q.value)}”.</div>`;l.classList.add("on")}
+function mpKey(cid,e){const s=MP[cid],l=$(cid+"_l");if(!l||!l.classList.contains("on"))return;const n=s.items.length;
+ if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();if(!n)return;s.hl=(s.hl+(e.key==="ArrowDown"?1:n-1))%n;l.querySelectorAll(".mp-it").forEach((x,i)=>x.classList.toggle("hl",i===s.hl))}
+ else if(e.key==="Enter"){e.preventDefault();if(s.hl>=0)mpPick(cid,s.hl)}else if(e.key==="Escape"){l.classList.remove("on")}}
+function mpPick(cid,i){const s=MP[cid],m=s.items[i];if(s.o.multi){s.o.onPick&&s.o.onPick(m);const q=$(cid+"_q");q.value="";$(cid+"_l").classList.remove("on");return}s.sel=m;mpRender(cid);s.o.onPick&&s.o.onPick(m)}
+function mpSet(cid,m){if(!MP[cid])return;MP[cid].sel=m;mpRender(cid);MP[cid].o.onPick&&MP[cid].o.onPick(m)}
+function mpClear(cid){MP[cid].sel=null;mpRender(cid);MP[cid].o.onClear&&MP[cid].o.onClear();setTimeout(()=>{const q=$(cid+"_q");if(q)q.focus()},30)}
+const mpGet=cid=>MP[cid]&&MP[cid].sel;
+async function memberById(id){const j=await call("GET","members/"+id+"/");return j.ok?j.member:null}
+async function memberByCode(code){const j=await call("GET","members/?q="+encodeURIComponent(code));return j.ok&&j.members.length?(j.members.find(m=>m.code===code)||j.members[0]):null}
+
+/* ============================== DASHBOARD & DESK ============================== */
+async function loadDash(){const j=await call("GET","dashboard/");if(!j.ok)return denied($("kpis"),j);const d=j.dashboard;
+ const k=[["Members",d.members],["Active",d.active_members],["Expiring in 7 days",d.expiring_7_days],["Check-ins today",d.checkins_today]];
+ if(d.collected_today!==undefined)k.push(["Collected today",rs(d.collected_today)],["This month",rs(d.collected_this_month)],["Pending dues",rs(d.pending_dues)]);
+ $("kpis").innerHTML=k.map(([a,b],i)=>`<div class="kpi ${i===0?"ac":""}"><span>${a}</span><b>${b}</b></div>`).join("");
+ if(can("receipts")){call("GET","reminders/").then(x=>{if(!x.ok)return;const p=Object.values(x.counts).reduce((a,c)=>a+c.pending,0);$("qa-rem-s").textContent=p?`${p} waiting to be sent`:"All sent for today ✓"})}else $("qa-rem").classList.add("hidden");
+ $("dash-sub").textContent=new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})+" · "+(GYM?GYM.name:"");
+ const row=(m,d)=>`<tr class="click" onclick="openMember('${m.id}')"><td><div class="who"><div class="av">${ini(m.name)}</div><div><b>${esc(m.name)}</b><span class="muted">${esc(m.code)} · ${esc(m.phone)}</span></div></div></td><td>${esc(m.plan||"")}</td><td style="text-align:right">${d?'<span class="chip c-dg">Has dues</span>':m.status==="active"&&m.days_left!=null?`<span class="chip c-wn">${m.days_left} days left</span>`:chip(m.status)}</td></tr>`;
+ const e=await call("GET","members/?status=expiring");$("dexp").innerHTML=e.ok?(e.members.slice(0,6).map(row).join("")||empty(3,"Nobody expiring this week")):"";
+ const du=await call("GET","members/?status=dues");$("ddue").innerHTML=du.ok?(du.members.slice(0,6).map(m=>row(m,1)).join("")||empty(3,"No pending dues")):empty(3,"Not available for your role")}
+async function loadDesk(){const j=await call("GET","checkins/");if(!j.ok)return denied($("dlist"),j,4);$("dcount").textContent=`· ${j.total}`;
+ $("dlist").innerHTML=j.checkins.map(c=>`<tr class="click" onclick="openMember('${c.member.id}')"><td><div class="who"><div class="av">${ini(c.member.name)}</div><div><b>${esc(c.member.name)}</b><span class="muted">${esc(c.member.code)}</span></div></div>${c.override_reason?`<span class="chip c-wn">let in: ${esc(c.override_reason)}</span>`:""}</td><td>${new Date(c.at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</td><td>${esc(c.by||"")}${c.device?` <span class="muted">· ${esc(c.device)}</span>`:""}</td><td>${esc(c.source.replace("_"," "))}</td></tr>`).join("")||empty(4,"No check-ins yet today");$("dq").focus()}
+async function lookup(){const q=V("dq");if(!q){$("dres").innerHTML="";return}const j=await call("GET","checkins/lookup/?q="+encodeURIComponent(q));if(!j.ok)return say("dmsg",err(j));$("dmsg").className="msg";
+ $("dres").innerHTML=j.results.map(m=>`<div class="res"><div class="who"><div class="av">${ini(m.name)}</div><div><b class="pf-open" onclick="openMember('${m.id}')">${esc(m.name)}</b> <span class="muted">${esc(m.code)} · ${esc(m.phone)}</span><div style="margin-top:3px">${chip(m.status)} ${esc(m.plan||"")}${m.days_left!=null&&m.status==="active"?` · ${m.days_left} days left`:""} ${Number(m.dues)>0?`<span class="chip c-wn">dues ${rs(m.dues)}</span>`:""} ${m.checked_in_today?`<span class="chip c-ok">in at ${new Date(m.checked_in_today).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</span>`:""}</div></div></div>
+  <div class="row" style="margin:0">${m.checked_in_today?"":m.can_check_in?`<button class="pr" onclick="checkin('${m.id}')">Check in</button>`:`<button onclick="letIn('${m.id}','${esc(m.name)}')">Let in anyway</button>`}${m.status!=="active"&&m.status!=="frozen"?`<button onclick="startBill('${m.id}')">${m.status==="no_plan"?"New bill":"Renew"}</button>`:""}</div></div>`).join("")||`<div class="empty"><b>No member found</b>Check the spelling, or <a class="link" style="cursor:pointer" onclick="openAddMember()">add a new member</a>.</div>`}
+async function checkin(id,reason){const b={member_id:id,client_ref:crypto.randomUUID()};if(reason)b.override_reason=reason;const j=await call("POST","checkins/",b);if(!j.ok)return say("dmsg",err(j));say("dmsg",j.created?`Checked in ${j.checkin.member.name}.`:`${j.checkin.member.name} was already checked in today.`,true);closeModal();lookup();loadDesk()}
+function letIn(id,name){modal("Let in without an active membership",`<p class="muted" style="margin-top:0">${name} doesn't have a running membership. Write why you're letting them in; it's saved with the check-in.</p><div class="grid">${F("lir","Reason","",{cls:"full",ph:"e.g. Paying tomorrow"})}</div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="if(V('lir'))checkin('${id}',V('lir'))">Let in</button>`)}
+
+/* ============================== MEMBERS ============================== */
+async function loadMembers(){const st=$("mst").value;const j=await call("GET",`members/?q=${encodeURIComponent(V("mq"))}&`+(st==="archived"?"archived=1":`status=${st}`));if(!j.ok)return denied($("mlist"),j,5);
+ $("mlist").innerHTML=j.members.map(m=>`<tr class="click" onclick="openMember('${m.id}')"><td><div class="who"><div class="av">${ini(m.name)}</div><div><b>${esc(m.name)}</b><span class="muted">${esc(m.code)} · ${esc(m.phone)}</span></div></div></td><td>${esc(m.plan||"—")}</td><td>${esc(m.trainer||"—")}</td><td>${m.end_date?fmtD(m.end_date):"—"}${m.status==="active"&&m.days_left!=null&&m.days_left<=7?`<br><span class="muted">${m.days_left} days left</span>`:""}</td><td>${chip(m.status)}</td></tr>`).join("")
+  ||empty(5,V("mq")||$("mst").value?"No members match":"No members yet",V("mq")||$("mst").value?"":`<div class="row" style="justify-content:center"><button class="pr" onclick="openAddMember()">+ Add your first member</button></div>`)}
+
+/* Add member: a 4-step form. Step 1 saves the member; later steps add to it. */
+const GOALS=["Weight Loss","Muscle Gain","Maintenance","General Fitness","Strength","Endurance","Flexibility & mobility"];
+const ACT=["","Sedentary","Lightly active","Moderately active","Very active"],WTIME=["","Early morning","Morning","Afternoon","Evening","Night"],DTYPE=["","Vegetarian","Eggetarian","Non-vegetarian","Vegan"];
+let WZ=null;const WSTEPS=["Basic details","Personal details","Fitness profile","Done"];
+function wzSteps(n){return `<div class="steps">${WSTEPS.map((s,i)=>`<div class="${i<n?"done":i===n?"on":""}"><i></i>${i+1}. ${s}</div>`).join("")}</div>`}
+function openAddMember(){WZ={m:null};modal("Add member",wzSteps(0)+`<div class="grid">${F("w_name","Full name *","",{cls:"two",ph:"e.g. Rohit Kulkarni"})}${F("w_phone","Mobile *","",{im:"tel",ph:"10-digit mobile"})}${F("w_gender","Gender *","Male",{opts:["Male","Female","Other"]})}${F("w_dob","Date of birth","",{type:"date"})}${F("w_bio","Fingerprint ID (eSSL)","",{ph:"Optional"})}</div><div class="msg" id="wmsg"></div>`,
+ `<button onclick="closeModal()">Cancel</button><button class="pr" onclick="wz1()">Save &amp; continue</button>`)}
+async function wz1(){const j=await call("POST","members/",{name:V("w_name"),phone:V("w_phone"),gender:V("w_gender"),date_of_birth:V("w_dob")||null,biometric_id:V("w_bio")});if(!j.ok)return say("wmsg",err(j));WZ.m=j.member;if($("mlist"))loadMembers();wz2()}
+function wzHead(){return `<div class="note" style="margin-bottom:14px">Saved <b>${esc(WZ.m.name)}</b> as <b>${esc(WZ.m.code)}</b>. Fill in the rest now, or skip and do it later from their profile.</div>`}
+function wz2(){const m=WZ.m;modal(`Add member · ${esc(m.name)}`,wzSteps(1)+wzHead()+`<div class="grid">${F("w_email","Email",m.email,{type:"email"})}${F("w_em","Emergency contact",m.emergency_contact,{ph:"Name and mobile"})}${F("w_addr","Address",m.address,{ta:1})}${F("w_notes","Notes",m.notes,{ta:1,ph:"Anything the front desk should know"})}</div><div class="msg" id="wmsg"></div>`,
+ `<button class="left ghost" onclick="wz3()">Skip</button><button class="pr" onclick="wz2save()">Save &amp; continue</button>`)}
+async function wz2save(){const j=await call("POST",`members/${WZ.m.id}/update/`,{version:WZ.m.version,email:V("w_email"),emergency_contact:V("w_em"),address:V("w_addr"),notes:V("w_notes")});if(!j.ok)return say("wmsg",err(j));WZ.m=j.member;wz3()}
+function fitnessFields(f){f=f||{};return `<div class="sec full">Goal</div>${F("f_fitness_goal","Fitness goal",f.fitness_goal||"",{opts:[["","—"],...GOALS]})}${F("f_target_date","Target date",f.target_date||"",{type:"date"})}
+ <div class="sec full">Body</div>${F("f_height_cm","Height (cm)",f.height_cm||"",{im:"decimal"})}${F("f_current_weight_kg","Weight now (kg)",f.current_weight_kg||"",{im:"decimal"})}${F("f_target_weight_kg","Target weight (kg)",f.target_weight_kg||"",{im:"decimal"})}
+ <div class="sec full">Routine</div>${F("f_activity_level","Activity level",f.activity_level||"",{opts:ACT.map(x=>[x,x||"—"])})}${F("f_workout_days_per_week","Workout days / week",f.workout_days_per_week||"",{opts:[["","—"],1,2,3,4,5,6,7]})}${F("f_workout_time","Workout time",f.workout_time||"",{opts:WTIME.map(x=>[x,x||"—"])})}
+ <div class="sec full">Food</div>${F("f_diet_type","Diet type",f.diet_type||"",{opts:DTYPE.map(x=>[x,x||"—"])})}${F("f_meals_per_day","Meals per day",f.meals_per_day||"",{opts:[["","—"],2,3,4,5,6]})}${F("f_food_allergies","Allergies",f.food_allergies||"",{ph:"e.g. peanuts, lactose"})}${F("f_food_preferences","Food preferences",f.food_preferences||"",{ph:"e.g. no onion-garlic"})}`}
+const FIT=["fitness_goal","target_date","height_cm","current_weight_kg","target_weight_kg","activity_level","workout_days_per_week","workout_time","diet_type","meals_per_day","food_allergies","food_preferences"];
+const fitnessBody=()=>{const b={};FIT.forEach(k=>b[k]=V("f_"+k)||null);return b};
+function wz3(){modal(`Add member · ${esc(WZ.m.name)}`,wzSteps(2)+`<div class="grid">${fitnessFields(WZ.m.fitness)}</div><div class="msg" id="wmsg"></div>`,`<button class="left ghost" onclick="wz4()">Skip</button><button class="pr" onclick="wz3save()">Save &amp; continue</button>`)}
+async function wz3save(){const j=await call("POST",`members/${WZ.m.id}/fitness/`,fitnessBody());if(!j.ok)return say("wmsg",err(j));WZ.m=j.member;wz4()}
+function wz4(){const m=WZ.m;modal(`Member added`,wzSteps(3)+`<div class="who" style="margin-bottom:14px"><div class="av" style="width:46px;height:46px;font-size:16px">${ini(m.name)}</div><div><b style="font-size:16px">${esc(m.name)}</b><span class="muted">${esc(m.code)} · ${esc(m.phone)}</span></div></div><p class="muted" style="margin:0 0 12px">What next?</p>
+ <div class="qa" style="margin:0"><button onclick="closeModal();startBill('${m.id}')"><b>Start membership</b><span>Create the first bill</span></button><button onclick="closeModal();goConsent('${m.id}')"><b>Sign consent form</b><span>Health questions + signature</span></button><button onclick="closeModal();openMember('${m.id}')"><b>Open profile</b><span>See everything about ${esc(m.name.split(" ")[0])}</span></button><button onclick="openAddMember()"><b>Add another member</b><span>Start a new form</span></button></div>`,`<button onclick="closeModal()">Close</button>`)}
+
+/* ============================== BILLING ============================== */
+let PLANS=[],TRAINERS=[],FAM=[],GSTP=0;
+async function loadPlansTrainers(){const p=await call("GET","plans/");PLANS=p.ok?p.plans:[];if(p.ok)GSTP=Number(p.gst_percent)||0;const t=await call("GET","trainers/?status=active");TRAINERS=t.ok?t.trainers:[]}
+async function loadBillPage(){await loadPlansTrainers();if(!MP.mp_bill){mpInit("mp_bill",{onPick:m=>{$("bk").value=m.status==="no_plan"||!m.plan?"new":"renewal";quote()},onClear:quote});mpInit("mp_fam",{multi:1,placeholder:"Add another member to this bill",exclude:()=>[...FAM.map(x=>x.id),...(mpGet("mp_bill")?[mpGet("mp_bill").id]:[])],onPick:m=>{FAM.push(m);famRender()}})}
+ const cur=$("bp").value;$("bp").innerHTML=PLANS.length?PLANS.map(p=>`<option value="${p.id}">${esc(p.name)} · ${p.duration_days} days · ${rs(p.final_fee||p.fee)}</option>`).join(""):`<option value="">No plans yet: add one in Plans</option>`;if(cur)$("bp").value=cur;
+ $("bt").innerHTML=`<option value="">Pick a trainer</option>`+TRAINERS.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");if(!$("bs").value)$("bs").value="";refShow();planPicked()}
+function refShow(){$("brw").classList.toggle("hidden",$("bmo").value==="Cash")}
+function famRender(){$("bfam").innerHTML=FAM.map((m,i)=>`<span class="chip c-p">${esc(m.name)} · ${esc(m.code)}<button onclick="FAM.splice(${i},1);famRender()">×</button></span>`).join("");quote()}
+function planPicked(){const p=PLANS.find(x=>x.id==$("bp").value);const gi=!!(p&&p.gst_inclusive);if(gi)$("bg").value="1";$("bg").disabled=gi;$("bgi").classList.toggle("hidden",!gi);$("btw").classList.toggle("hidden",!(p&&p.is_personal_training));const fam=p&&p.members_covered>1;$("bfw").classList.toggle("hidden",!fam);if(fam)$("bfl").textContent=`Other members covered (plan covers ${p.members_covered} people)`;else FAM=[];quote()}
+function billBody(){const m=mpGet("mp_bill");const body={member_id:m&&m.id,plan_id:+$("bp").value,kind:$("bk").value,discount:V("bd")||"0",apply_gst:$("bg").value==="1",amount_paid:V("ba")||"0",payment_mode:$("bmo").value,reference_no:V("br")};
+ if(V("bs"))body.start_date=V("bs");if($("bt").value&&!$("btw").classList.contains("hidden"))body.trainer_id=+$("bt").value;if(FAM.length)body.member_ids=[m.id,...FAM.map(x=>x.id)];return body}
+function quote(){deb("quote",async()=>{if(!mpGet("mp_bill")||!$("bp").value){$("bsum").innerHTML=`<div class="muted">Pick a member and a plan.</div>`;return}const j=await call("POST","bills/quote/",billBody());if(!j.ok){$("bsum").innerHTML=`<div class="warnbox">${esc(err(j))}</div>`;return}const q=j.quote;
+ $("bsum").innerHTML=`<div><span class="muted">Member</span><b>${esc(mpGet("mp_bill").name)}</b></div><div><span class="muted">Plan</span><b>${esc(q.plan)}</b></div><div><span class="muted">Dates</span><b>${fmtD(q.start_date)} → ${fmtD(q.end_date)}</b></div>${q.covers.length>1?`<div><span class="muted">Covers</span><b>${q.covers.map(esc).join(", ")}</b></div>`:""}<div><span class="muted">${q.gst_inclusive?"Fee (incl. GST)":"Fee"}</span><b>${rs(q.fee)}</b></div><div><span class="muted">Discount</span><b>− ${rs(q.discount)}</b></div>${q.gst_inclusive?`<div><span class="muted">Price before GST</span><b>${rs(q.taxable)}</b></div><div><span class="muted">GST ${fmtPct(q.gst_percent)}% (included)</span><b>${rs(q.gst_amount)}</b></div>`:`<div><span class="muted">GST ${fmtPct(q.gst_percent)}%</span><b>${rs(q.gst_amount)}</b></div>`}<div class="tot"><span>Total</span><span>${rs(q.total)}</span></div><div><span class="muted">Paid now</span><b>${rs(q.amount_paid)}</b></div><div><span class="muted">Due after this</span><b>${rs(q.remaining)}</b></div><div><span class="muted">Status</span>${chip(q.payment_status)}</div>${Number(q.trainer_share)?`<div><span class="muted">Trainer / gym share</span><b>${rs(q.trainer_share)} / ${rs(q.gym_share)}</b></div>`:""}`},250)}
+async function saveBill(){if(!mpGet("mp_bill"))return say("bmsg","Pick a member first.");const body=billBody();body.client_ref=crypto.randomUUID();const j=await call("POST","bills/",body);if(!j.ok)return say("bmsg",err(j));say("bmsg",`Saved receipt ${j.bill.receipt_no} · ${j.bill.payment_status}`,true);billOut(j.bill,"bout");$("bout").insertAdjacentHTML("beforeend",`<div class="row"><button onclick="openMember('${j.bill.member.id}')">Member profile</button><button class="pr" onclick="resetBill()">Start another bill</button></div>`)}
+function resetBill(){if(MP.mp_bill)mpClear("mp_bill");FAM=[];famRender();["bd","ba"].forEach(i=>$(i).value="0");$("br").value="";$("bs").value="";$("bout").innerHTML="";quote()}
+function billOut(b,el){$(el).innerHTML=`<div class="row"><button onclick="receipt('${b.id}')">Open receipt</button><button onclick="receiptPdf('${b.id}')">View PDF</button><button onclick="receiptPdf('${b.id}',1)">Download PDF</button><button onclick="emailDlg('receipt','${b.id}','${b.member.id}')">Send by email</button>${b.whatsapp?`<a class="link" target="_blank" href="${b.whatsapp.link}">Send on WhatsApp ↗</a>`:""}</div>${b.upi?`<div class="meal" style="margin-top:12px"><b>Collect ${rs(b.upi.amount)} by UPI</b> <span class="muted">to ${esc(b.upi.upi_id)}</span><div id="qr_${el}" style="margin:10px 0;background:#fff;padding:8px;border-radius:8px;width:max-content"></div><a class="link" href="${b.upi.link}">${esc(b.upi.link)}</a></div>`:""}`;if(b.upi&&window.QRCode)new QRCode($("qr_"+el),{text:b.upi.link,width:140,height:140})}
+async function startBill(idOrCode){let m=null;if(/^[0-9a-f-]{36}$/.test(idOrCode))m=await memberById(idOrCode);else m=await memberByCode(idOrCode);go("bill");setTimeout(async()=>{if(!MP.mp_bill)await loadBillPage();if(m)mpSet("mp_bill",m)},150)}
+async function blobFetch(url){const r=await fetch(API+url,{headers:{Authorization:"Bearer "+tok()}});if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw new Error(j.message||("Error "+r.status))}return {blob:await r.blob(),name:((r.headers.get("Content-Disposition")||"").match(/filename="([^"]+)"/)||[])[1]}}
+async function receiptPdf(id,download){const w=download?null:window.open("about:blank","_blank");const j=await call("GET",`bills/${id}/receipt-link/`);if(!j.ok){if(w)w.close();return say("gmsg",err(j))}
+ if(download){const a=document.createElement("a");a.href=j.download_url;a.download=j.filename;document.body.appendChild(a);a.click();a.remove()}else if(w)w.location.href=location.origin+j.url;else location.href=j.url}
+async function receipt(id){const r=await fetch(API+`bills/${id}/receipt/`,{headers:{Authorization:"Bearer "+tok()}});const h=await r.text();const w=window.open("","_blank");w.document.write(h);w.document.close()}
+async function loadBills(){const j=await call("GET",`bills/?q=${encodeURIComponent(V("xq"))}&payment_status=${encodeURIComponent($("xs").value)}`);if(!j.ok)return denied($("xlist"),j,7);
+ $("xlist").innerHTML=j.bills.map(b=>`<tr class="click" onclick="billDetail('${b.id}')"><td><b>${esc(b.receipt_no)}</b><br><span class="muted">${fmtD(b.created_at.slice(0,10))}</span></td><td>${esc(b.member.name)}${b.covers.length>1?` <span class="muted">+${b.covers.length-1}</span>`:""}</td><td>${esc(b.plan.name)}</td><td>${rs(b.total)}</td><td>${rs(b.paid)}</td><td>${Number(b.remaining)>0?`<b>${rs(b.remaining)}</b>`:"—"}</td><td>${b.status==="cancelled"?chip("cancelled"):chip(b.payment_status)}</td></tr>`).join("")||empty(7,"No bills found")}
+async function billDetail(id){const j=await call("GET",`bills/${id}/`);if(!j.ok)return fail(j);const b=j.bill,due=Number(b.remaining)>0&&b.status==="active";
+ modal(`${esc(b.receipt_no)} · ${esc(b.member.name)} ${b.status==="cancelled"?chip("cancelled"):chip(b.payment_status)}`,`<div class="kpis" style="margin-bottom:12px"><div class="kpi"><span>Total</span><b>${rs(b.total)}</b></div><div class="kpi"><span>Paid</span><b>${rs(b.paid)}</b></div><div class="kpi"><span>Due</span><b>${rs(b.remaining)}</b></div></div>
+  <div class="muted">${esc(b.plan.name)} · ${fmtD(b.start_date)} → ${fmtD(b.end_date)} · GST ${rs(b.gst_amount)}${Number(b.trainer_share)?` · trainer share ${rs(b.trainer_share)}`:""}</div>
+  <table style="margin-top:10px"><thead><tr><th>Paid on</th><th>Amount</th><th>Mode</th><th>Reference</th><th>By</th></tr></thead><tbody>${b.payments.map(p=>`<tr><td>${fmtD(p.paid_on)}</td><td>${rs(p.amount)}</td><td>${esc(p.mode)}</td><td>${esc(p.reference_no||"—")}</td><td>${esc(p.received_by||"")}</td></tr>`).join("")||empty(5,"No payment yet")}</tbody></table>
+  ${due?`<div class="sec" style="margin-top:16px">Record a payment</div><div class="grid">${F("pa","Amount ₹","",{ph:`Blank = full ${b.remaining}`,im:"decimal"})}${F("pmo","Mode","UPI",{opts:["UPI","Cash","Card","Bank Transfer","Cheque"]})}${F("prf","Reference","",{ph:"UPI ref / UTR"})}</div><div class="row"><button class="pr" onclick="collect('${b.id}')">Record payment</button></div>`:""}<div id="xout"></div><div class="msg" id="xmsg"></div>`,
+  `${b.status==="active"?`<button class="dg left" onclick="cancelBill('${b.id}')">Cancel bill</button>`:""}<button onclick="openMember('${b.member.id}');closeModal()">Member profile</button><button onclick="receiptPdf('${b.id}',1)">Download PDF</button><button onclick="receiptPdf('${b.id}')">View PDF</button><button onclick="emailDlg('receipt','${b.id}','${b.member.id}')">Email</button><button class="pr" onclick="receipt('${b.id}')">Open receipt</button>`,1);if(b.whatsapp||b.upi)billOut(b,"xout")}
+async function collect(id){const body={mode:V("pmo"),reference_no:V("prf")};if(V("pa"))body.amount=V("pa");const j=await call("POST",`bills/${id}/payments/`,body);if(!j.ok)return say("xmsg",err(j));await billDetail(id);say("xmsg","Payment recorded.",true);loadBills()}
+async function cancelBill(id){const r=prompt("Why cancel this bill? (owner only)");if(!r)return;const j=await call("POST",`bills/${id}/cancel/`,{reason:r});if(!j.ok)return say("xmsg",err(j));await billDetail(id);say("xmsg","Bill cancelled.",true);loadBills()}
+
+/* plans */
+async function loadPlans(){const j=await call("GET","plans/?status=all");if(!j.ok)return denied($("plist"),j,7);PLANS=j.plans.filter(p=>p.status==="active");GSTP=Number(j.gst_percent)||0;
+ $("plist").innerHTML=j.plans.map(p=>`<tr><td><b>${esc(p.name)}</b>${p.status!=="active"?" "+chip("archived"):""}${p.description?`<br><span class="muted">${esc(p.description)}</span>`:""}</td><td>${p.duration_days} days</td><td>${rs(p.fee)}${p.gst_inclusive?` <span class="muted" style="font-size:12px">incl. GST</span>`:""}${Number(p.discount_percent)?`<br><span class="muted">${p.discount_percent}% off → ${rs(p.final_fee)}</span>`:""}</td><td>${p.is_personal_training?`Yes · trainer ${Number(p.trainer_share_percent)}%${p.pt_sessions?`<br><span class="muted">${p.pt_sessions} sessions</span>`:""}`:"—"}</td><td>${p.members_covered>1?`${p.members_covered} people`:"1"}</td><td>${p.freeze_max_days?`${p.freeze_max_days} days, ${p.freeze_max_times||"any"} times`:"—"}</td><td style="text-align:right"><button class="sm" onclick='planForm(${JSON.stringify(p.id)})'>Edit</button> <button class="sm ghost" onclick="planArchive(${p.id},${p.status==="active"})">${p.status==="active"?"Archive":"Restore"}</button></td></tr>`).join("")||empty(7,"No plans yet","Add your monthly, quarterly and PT plans to start billing.")}
+async function planForm(id){let p={name:"",duration_days:30,fee:"",discount_percent:0,is_personal_training:false,trainer_share_percent:0,pt_sessions:0,members_covered:1,freeze_max_days:0,freeze_max_times:0,description:"",gst_inclusive:false};
+ {const j=await call("GET","plans/?status=all");if(j.ok){GSTP=Number(j.gst_percent)||0;if(id)p=j.plans.find(x=>x.id===id)||p}}
+ modal(id?`Edit plan · ${esc(p.name)}`:"Add plan",`<div class="grid">${F("pl_name","Plan name *",p.name,{cls:"two",ph:"e.g. Monthly"})}${F("pl_days","Duration (days) *",p.duration_days,{im:"numeric"})}${F("pl_fee","Fee ₹ *",p.fee,{im:"decimal",ph:"e.g. 1500"})}${F("pl_disc","Discount %",Number(p.discount_percent),{im:"decimal"})}${F("pl_mc","Members covered",p.members_covered,{opts:[[1,"1 (single)"],[2,"2 (couple)"],[3,"3"],[4,"4 (family)"],[5,"5"],[6,"6"]]})}
+  <div class="full gstbox"><label class="ck"><input type="checkbox" id="pl_gi" ${p.gst_inclusive?"checked":""} ${GSTP>0?"":"disabled"}> <span><b>Price includes GST</b> <span class="muted">${GSTP>0?`(${fmtPct(GSTP)}% from Settings)`:"· set the GST % in Settings → Receipts &amp; GST first"}</span></span></label><div id="pl_gb" class="gstsplit"></div></div>
+  ${F("pl_pt","Personal training",p.is_personal_training?"1":"0",{opts:[["0","No"],["1","Yes"]]})}<div id="pl_ptw" class="full ${p.is_personal_training?"":"hidden"}"><div class="grid">${F("pl_ts","Trainer share %",Number(p.trainer_share_percent),{im:"decimal"})}${F("pl_ss","PT sessions in pack",p.pt_sessions,{im:"numeric",ph:"0 = unlimited"})}</div></div>
+  ${F("pl_fd","Freeze days allowed",p.freeze_max_days,{im:"numeric"})}${F("pl_ft","Freeze times allowed",p.freeze_max_times,{im:"numeric",ph:"0 = any"})}${F("pl_desc","Description",p.description,{ta:1,ph:"Optional, shown on the plan list"})}</div><div class="msg" id="plmsg"></div>`,
+  `<button onclick="closeModal()">Cancel</button><button class="pr" onclick="planSave(${id||0})">${id?"Save changes":"Save plan"}</button>`);$("pl_pt").onchange=()=>$("pl_ptw").classList.toggle("hidden",$("pl_pt").value!=="1");["pl_fee","pl_disc","pl_gi"].forEach(i=>$(i).addEventListener(i==="pl_gi"?"change":"input",planGst));planGst()}
+const fmtPct=v=>String(Number(v)).replace(/\.0+$/,"");
+const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
+/* live breakdown in the plan form, using the GST % saved in Settings */
+function planGst(){const box=$("pl_gb");if(!box)return;const fee=Number(V("pl_fee"))||0,disc=Number(V("pl_disc"))||0,pay=r2(fee-fee*disc/100),inc=$("pl_gi").checked;
+ if(!fee||!GSTP){box.innerHTML="";return}
+ const half=fmtPct(GSTP/2);let rows;
+ if(inc){const base=r2(pay*100/(100+GSTP)),g=r2(pay-base);rows=[["Member pays",rs(pay),"tot"],["Price before GST",rs(base)],[`GST ${fmtPct(GSTP)}% included (CGST ${half}% + SGST ${half}%)`,rs(g)]]}
+ else{const g=r2(pay*GSTP/100);rows=[["Plan price",rs(pay)],[`If GST is added on the bill: + GST ${fmtPct(GSTP)}%`,rs(g)],["Member would pay",rs(r2(pay+g)),"tot"]]}
+ box.innerHTML=(disc?`<div class="muted" style="font-size:12px;margin-bottom:4px">After the ${fmtPct(disc)}% discount</div>`:"")+rows.map(([l,v,c])=>`<div class="${c||""}"><span>${l}</span><b>${v}</b></div>`).join("")}
+async function planSave(id){const pt=V("pl_pt")==="1";const b={name:V("pl_name"),duration_days:+V("pl_days")||0,fee:V("pl_fee"),discount_percent:V("pl_disc")||"0",members_covered:+V("pl_mc"),is_personal_training:pt,trainer_share_percent:pt?V("pl_ts")||"0":"0",pt_sessions:pt?+V("pl_ss")||0:0,freeze_max_days:+V("pl_fd")||0,freeze_max_times:+V("pl_ft")||0,description:V("pl_desc"),gst_inclusive:$("pl_gi").checked};
+ const j=await call("POST",id?`plans/${id}/update/`:"plans/",b);if(!j.ok)return say("plmsg",err(j));closeModal();say("gmsg",`Saved plan ${j.plan.name}.`,true);loadPlans()}
+async function planArchive(id,arch){const j=await call("POST",`plans/${id}/archive/`,{archived:arch});if(!j.ok)return fail(j);loadPlans()}
+
+/* ============================== TEAM ============================== */
+async function loadTrainers(){const st=$("tst").value;const j=await call("GET","trainers/"+(st?"?status="+st:""));if(!j.ok)return denied($("tlist"),j,4);
+ $("tlist").innerHTML=j.trainers.map(t=>`<tr class="click" onclick="openTrainer(${t.id})"><td><div class="who"><div class="av">${ini(t.name)}</div><div><b>${esc(t.name)}</b><span class="muted">${esc(t.code)} · ${esc(t.phone)}${t.specialization?" · "+esc(t.specialization):""}</span></div></div></td><td>${t.staff?`Staff · ${esc(t.staff.designation)}`:`<span class="chip c-p">Freelance</span>`}</td><td>${t.login?esc(t.login.name):'<span class="muted">Not linked</span>'}</td><td>${chip(t.status)}</td></tr>`).join("")
+  ||empty(4,st==="inactive"?"No inactive trainers":"No trainers yet",st==="inactive"?"":`Add staff with the department “Trainer”, or add a freelance trainer.`)}
+async function trainerForm(){const u=await call("GET","team/users/");const logins=u.ok?u.users.filter(x=>x.role==="trainer"):[];
+ modal("Add freelance trainer",`<div class="note" style="margin-bottom:14px">Is this trainer on your payroll? Add them in <b>Staff</b> with the department “Trainer” instead; they'll appear here automatically and their PT commission is paid with salary.</div><div class="grid">${F("tr_name","Name *","",{cls:"two"})}${F("tr_phone","Mobile *","",{im:"tel"})}${F("tr_gender","Gender","Male",{opts:["Male","Female","Other"]})}${F("tr_spec","Specialisation","",{ph:"e.g. Strength, Yoga"})}${F("tr_join","Joining date",today(),{type:"date"})}${F("tr_login","Trainer sign-in",""
+  ,{opts:[["","Not linked"],...logins.map(x=>[x.id,x.name])]})}</div><p class="muted" style="margin:8px 0 0;font-size:12px">Linking a trainer sign-in lets them see only their own clients.</p><div class="msg" id="trmsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="trainerSave()">Save trainer</button>`)}
+async function trainerSave(){const b={name:V("tr_name"),phone:V("tr_phone"),gender:V("tr_gender"),specialization:V("tr_spec"),joining_date:V("tr_join")||null};if(V("tr_login"))b.staff_user_id=+V("tr_login");const j=await call("POST","trainers/",b);if(!j.ok)return say("trmsg",err(j));closeModal();say("gmsg",`Added ${j.trainer.name} (${j.trainer.code}).`,true);loadTrainers()}
+
+const DEPTS=["Front Desk","Trainer","Management","Housekeeping","Maintenance","Sales","Other"];
+async function loadStaff(){const st=$("sst").value;const j=await call("GET","staff/"+(st?"?status="+st:""));if(!j.ok)return denied($("slist"),j,5);
+ $("slist").innerHTML=j.staff.map(s=>`<tr class="click" onclick="openStaff(${s.id})"><td><div class="who"><div class="av">${ini(s.name)}</div><div><b>${esc(s.name)}</b><span class="muted">${esc(s.code)} · ${esc(s.phone)}</span></div></div></td><td>${esc(s.designation)}<br><span class="muted">${esc(s.department||"")}</span></td><td>${fmtD(s.joining_date)}</td><td>${j.salaries_visible?`${rs(s.monthly_salary)}<br><span class="muted">${esc(s.salary_basis)}</span>`:'<span class="muted">Hidden</span>'}</td><td>${s.trainer?chip("Trainer","c-p"):"—"}</td></tr>`).join("")
+  ||empty(5,"No staff yet",`<div class="row" style="justify-content:center"><button class="pr" onclick="staffForm()">+ Add staff</button></div>`)}
+function staffForm(){const own=ME&&(ME.role==="owner"||(ME.permissions.salaries||[]).includes("edit"));modal("Add staff",`<datalist id="desig"><option>Receptionist</option><option>Front Desk Executive</option><option>General Trainer</option><option>Personal Trainer</option><option>Head Trainer</option><option>Gym Manager</option><option>Housekeeping</option><option>Sales Executive</option></datalist>
+ <div class="sec">Person</div><div class="grid">${F("st_name","Full name *","",{cls:"two"})}${F("st_phone","Mobile *","",{im:"tel"})}${F("st_gender","Gender","Male",{opts:["Male","Female","Other"]})}${F("st_dob","Date of birth","",{type:"date"})}${F("st_em","Emergency contact","")}</div>
+ <div class="sec">Job</div><div class="grid">${F("st_dept","Department *","Front Desk",{opts:DEPTS})}${F("st_desig","Designation *","Receptionist",{list:"desig"})}${F("st_join","Joining date",today(),{type:"date"})}<div class="full note hidden" id="st_tn">Staff in the <b>Trainer</b> department are also added to <b>Trainers</b>, so they can be picked on PT bills. Their PT commission is paid with salary.</div></div>
+ ${own?`<div class="sec">Salary</div><div class="grid">${F("st_sal","Monthly salary ₹","",{im:"decimal"})}${F("st_basis","Salary basis","Calendar Days",{opts:["Calendar Days","Fixed 30 Days"]})}</div>`:""}<div class="grid" style="margin-top:12px">${F("st_addr","Address","",{ta:1,cls:"full"})}</div><div class="msg" id="stmsg"></div>`,
+ `<button onclick="closeModal()">Cancel</button><button class="pr" onclick="staffSave()">Save staff</button>`,1);
+ $("st_dept").onchange=()=>{const t=V("st_dept")==="Trainer";$("st_tn").classList.toggle("hidden",!t);if(t&&V("st_desig")==="Receptionist")$("st_desig").value="General Trainer";if(!t&&V("st_desig")==="General Trainer")$("st_desig").value="Receptionist"}}
+async function staffSave(){const b={name:V("st_name"),phone:V("st_phone"),gender:V("st_gender"),designation:V("st_desig"),department:V("st_dept"),joining_date:V("st_join")||null,emergency_contact:V("st_em"),address:V("st_addr")};if(V("st_dob"))b.date_of_birth=V("st_dob");if($("st_sal")&&V("st_sal")){b.monthly_salary=V("st_sal");b.salary_basis=V("st_basis")}
+ const j=await call("POST","staff/",b);if(!j.ok)return say("stmsg",err(j));closeModal();say("gmsg",`Added ${j.staff.name} (${j.staff.code})${j.staff.trainer?". Also listed under Trainers.":"."}`,true);loadStaff()}
+
+const AST=["Present","Half Day","Absent","Paid Leave","Weekly Off","Holiday"];let AROWS=[];
+function attDay(n){const d=new Date((V("ad")||today())+"T00:00:00");d.setDate(d.getDate()+n);$("ad").value=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;loadAtt()}
+async function loadAtt(){if(!V("ad"))$("ad").value=today();const j=await call("GET","staff-attendance/?date="+V("ad"));if(!j.ok)return denied($("alist"),j,5);AROWS=j.rows;
+ $("alist").innerHTML=j.rows.map((r,i)=>`<tr><td><div class="who"><div class="av">${ini(r.name)}</div><div><b class="pf-open" onclick="openStaff(${r.staff_id},'att')">${esc(r.name)}</b><span class="muted">${esc(r.code)} · ${esc(r.designation)}</span></div></div></td><td><select id="at_s${i}" style="width:150px"><option value="">Not marked</option>${AST.map(s=>`<option ${r.status===s?"selected":""}>${s}</option>`).join("")}</select>${r.inferred?`<br><span class="muted" style="font-size:11px">Sunday: paid off if left unmarked</span>`:""}</td><td><input type="time" id="at_i${i}" value="${esc(r.check_in)}" style="width:120px"></td><td><input type="time" id="at_o${i}" value="${esc(r.check_out)}" style="width:120px"></td><td><input id="at_r${i}" value="${esc(r.remarks)}" placeholder="Optional"></td></tr>`).join("")||empty(5,"No active staff")}
+function allPresent(){AROWS.forEach((r,i)=>$("at_s"+i).value="Present")}
+async function saveAtt(){const rows=AROWS.map((r,i)=>({staff_id:r.staff_id,date:V("ad"),status:V("at_s"+i),check_in:V("at_i"+i),check_out:V("at_o"+i),remarks:V("at_r"+i)})).filter(r=>r.status&&!(AROWS.find(x=>x.staff_id===r.staff_id).inferred&&r.status==="Weekly Off"&&!r.check_in));
+ const j=await call("POST","staff-attendance/",{rows});if(!j.ok)return say("amsg",err(j));say("amsg",`Saved attendance for ${j.saved} ${j.saved===1?"person":"people"}.`,true);loadAtt()}
+
+async function loadPay(){if(!V("pm"))$("pm").value=today().slice(0,7);const j=await call("GET","payroll/?month="+V("pm"));if(!j.ok){$("payk").innerHTML="";return denied($("paylist"),j,8)}
+ const tot=j.rows.reduce((a,r)=>[a[0]+r.total,a[1]+(r.settled?Number(r.settled.total):0),a[2]+r.advance],[0,0,0]);
+ $("payk").innerHTML=[["Staff",j.rows.length],["Total payable",rs(tot[0])],["Already paid",rs(tot[1])],["Advances",rs(tot[2])]].map(([a,b])=>`<div class="kpi"><span>${a}</span><b>${b}</b></div>`).join("");
+ $("paylist").innerHTML=j.rows.map(r=>`<tr><td><b class="pf-open" onclick="openStaff(${r.staff.id},'pay','${V("pm")}')">${esc(r.staff.name)}</b><br><span class="muted">${rs(r.staff.monthly_salary)} · ${esc(r.staff.salary_basis)}</span></td><td>${r.paid_days}<br><span class="muted">${r.counts.Present}P · ${r.counts["Half Day"]}H · ${r.counts["Paid Leave"]}L · ${r.weekly_off_inferred} Sun${r.counts.Holiday?` · ${r.counts.Holiday} Hol${r.holidays_paid?"":" (unpaid)"}`:""}</span>${r.not_marked?`<br><span class="chip c-wn" title="Working days so far with no attendance: they earn nothing">${r.not_marked} day${r.not_marked>1?"s":""} not marked</span>`:""}</td><td>${rs(r.earned)}</td><td>${rs(r.advance)}</td><td>${rs(r.net)}</td><td>${rs(r.pt_pending)}</td><td><b>${rs(r.total)}</b></td><td style="text-align:right">${r.settled?chip("Paid "+fmtD(r.settled.payment_date),"c-ok"):`${r.total>0?"":'<span class="muted" style="font-size:12px">Nothing to pay yet</span> '}<button class="sm pr ${r.total>0?"":"hidden"}" onclick="payForm(${r.staff.id},'${esc(r.staff.name)}',${r.total})">Pay</button> <button class="sm" onclick="advForm(${r.staff.id},'${esc(r.staff.name)}')">Advance</button>`}</td></tr>`).join("")||empty(8,"No active staff")}
+function payForm(id,name,total){modal(`Pay ${name} · ${V("pm")}`,`<div class="kpi" style="margin-bottom:14px"><span>Amount</span><b>${rs(total)}</b></div><div class="grid">${F("py_mode","Mode","UPI",{opts:["UPI","Cash","Bank Transfer","Cheque"]})}${F("py_ref","Reference (not needed for cash)","",{ph:"UTR / cheque no."})}${F("py_rem","Remarks","",{cls:"full"})}</div><div class="msg" id="pymsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="paySave(${id})">Mark as paid</button>`)}
+async function paySave(id){const j=await call("POST",`staff/${id}/payroll/pay/`,{month:V("pm"),mode:V("py_mode"),reference_no:V("py_ref"),remarks:V("py_rem")});if(!j.ok)return say("pymsg",err(j));closeModal();say("paymsg",`Paid ${rs(j.settlement.total)} (salary ${rs(j.settlement.salary)} + PT ${rs(j.settlement.pt_commission)}).`,true);loadPay()}
+function advForm(id,name){modal(`Salary advance · ${name}`,`<div class="grid">${F("av_amt","Amount ₹ *","",{im:"decimal"})}${F("av_date","Date",today(),{type:"date"})}${F("av_mode","Mode","Cash",{opts:["Cash","UPI","Bank Transfer"]})}</div><p class="muted" style="margin:10px 0 0">Deducted from that month's salary.</p><div class="msg" id="avmsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="advSave(${id})">Save advance</button>`)}
+async function advSave(id){const j=await call("POST",`staff/${id}/advances/`,{amount:V("av_amt"),date:V("av_date"),mode:V("av_mode")});if(!j.ok)return say("avmsg",err(j));closeModal();say("paymsg","Advance saved.",true);loadPay()}
+
+/* ============================== EXPENSES, ENQUIRIES ============================== */
+let EMETA=null;
+async function loadExp(){const j=await call("GET","expenses/");if(!j.ok){$("ek").innerHTML="";return denied($("elist"),j,7)}EMETA=j;const t=j.totals;
+ $("ek").innerHTML=[["Total",rs(t.total)],["Paid",rs(t.paid)],["Pending",rs(t.pending)],["Records",t.count]].map(([a,b])=>`<div class="kpi"><span>${a}</span><b>${b}</b></div>`).join("");
+ $("elist").innerHTML=j.expenses.map(e=>`<tr><td>${fmtD(e.date)}</td><td><b>${esc(e.title)}</b>${e.paid_to?`<br><span class="muted">${esc(e.paid_to)}</span>`:""}</td><td>${chip(e.category,"c-p")}</td><td>${rs(e.amount)}</td><td>${esc(e.mode)}</td><td>${chip(e.status)}</td><td style="text-align:right"><button class="sm ghost" onclick="delExp(${e.id},'${esc(e.title)}')">Delete</button></td></tr>`).join("")||empty(7,"No expenses yet")}
+function expForm(){if(!EMETA)return;modal("Add expense",`<div class="grid">${F("ex_title","What for *","",{cls:"two",ph:"e.g. Electricity bill"})}${F("ex_amt","Amount ₹ *","",{im:"decimal"})}${F("ex_date","Date",today(),{type:"date"})}${F("ex_cat","Category",EMETA.categories[0],{opts:EMETA.categories})}${F("ex_mode","Mode",EMETA.modes[0],{opts:EMETA.modes})}${F("ex_st","Status","Paid",{opts:["Paid","Pending"]})}${F("ex_to","Paid to","")}${F("ex_ref","Reference","")}</div><div class="msg" id="exmsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="expSave()">Save expense</button>`)}
+async function expSave(){const j=await call("POST","expenses/",{date:V("ex_date"),category:V("ex_cat"),title:V("ex_title"),amount:V("ex_amt"),mode:V("ex_mode"),status:V("ex_st"),paid_to:V("ex_to"),reference_no:V("ex_ref")});if(!j.ok)return say("exmsg",err(j));closeModal();say("gmsg","Expense saved.",true);loadExp()}
+async function delExp(id,t){if(!confirm(`Delete expense “${t}”?`))return;const j=await call("POST",`expenses/${id}/delete/`,{});if(!j.ok)return fail(j);loadExp()}
+
+let QMETA=null;
+async function loadEnq(){const j=await call("GET","enquiries/?view="+$("qv").value);if(!j.ok){$("qk").innerHTML="";return denied($("qlist"),j,5)}QMETA=j.choices;const s=j.stats;
+ $("qk").innerHTML=[["Open",s.open],["Due today",s.due_today],["Overdue",s.overdue],["This month",s.this_month],["Joined this month",s.converted_this_month],["Conversion",s.conversion_rate+"%"]].map(([a,b])=>`<div class="kpi"><span>${a}</span><b>${b}</b></div>`).join("");
+ $("qlist").innerHTML=j.enquiries.map(e=>`<tr class="click" onclick="enqDetail(${e.id})"><td><div class="who"><div class="av">${ini(e.name)}</div><div><b>${esc(e.name)}</b><span class="muted">${esc(e.code)} · ${esc(e.phone)}${e.referred_by?` · referred by ${esc(e.referred_by.name||e.referred_by.code)}`:""}</span></div></div></td><td>${esc(e.source)}</td><td>${chip(e.priority)}</td><td>${chip(e.status,e.status==="Converted"?"c-ok":e.status==="Lost"?"c-dg":"c-p")}</td><td>${e.next_follow_up_date?fmtD(e.next_follow_up_date):"—"}</td></tr>`).join("")||empty(5,"No enquiries here")}
+function enqForm(){if(!QMETA)return;modal("New enquiry",`<div class="grid">${F("eq_name","Name *","",{cls:"two"})}${F("eq_phone","Mobile *","",{im:"tel"})}${F("eq_src","Source","Walk-in",{opts:QMETA.sources})}${F("eq_pri","Priority","Warm",{opts:QMETA.priorities})}${F("eq_next","Next follow-up",today(),{type:"date"})}${F("eq_goal","Interested in / goal","",{ph:"e.g. Weight loss, PT"})}
+ <div class="full"><label>Referred by a member (optional)</label><div id="mp_ref"></div></div>${F("eq_notes","Notes","",{ta:1})}</div><div class="msg" id="eqmsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="enqSave()">Save enquiry</button>`);mpInit("mp_ref",{placeholder:"Search the member who referred them"})}
+async function enqSave(){const b={name:V("eq_name"),phone:V("eq_phone"),source:V("eq_src"),priority:V("eq_pri"),fitness_goal:V("eq_goal"),notes:V("eq_notes")};if(V("eq_next"))b.next_follow_up_date=V("eq_next");const r=mpGet("mp_ref");if(r){b.referred_by_member_id=r.id;if(b.source==="Walk-in")b.source="Referral"}
+ const j=await call("POST","enquiries/",b);if(!j.ok)return say("eqmsg",err(j));closeModal();say("gmsg",`Saved enquiry ${j.enquiry.code}.`+(j.existing_members_with_phone&&j.existing_members_with_phone.length?` Note: ${j.existing_members_with_phone[0].name} (${j.existing_members_with_phone[0].code}) already has this number.`:""),true);loadEnq()}
+async function enqDetail(id){const j=await call("GET",`enquiries/${id}/`);if(!j.ok)return fail(j);const e=j.enquiry,open=!["Converted","Lost"].includes(e.status);
+ modal(`${esc(e.name)} <span class="muted" style="font-weight:500">${esc(e.code)}</span> ${chip(e.status,e.status==="Converted"?"c-ok":e.status==="Lost"?"c-dg":"c-p")}`,
+ `<div class="row" style="margin-top:0">${chip(e.priority)} <span class="muted">${esc(e.source)} · ${esc(e.phone)}</span><a class="link" target="_blank" href="${e.whatsapp.link}">WhatsApp ↗</a>${e.referral_reward?chip(`Referral reward ${e.referral_reward.days} days · ${e.referral_reward.status}`,"c-ok"):""}${e.converted_member?`<span class="pf-open" onclick="closeModal();openMember('${e.converted_member.id}')">Member ${esc(e.converted_member.code)}</span>`:""}</div>
+ ${open?`<div class="sec" style="margin-top:16px">Log a follow-up</div><div class="grid">${F("fu_mode","How","Call",{opts:QMETA.followup_modes})}${F("fu_st","Move to","",{opts:[["","Keep stage"],"Contacted","Follow-up","Trial"]})}${F("fu_next","Next follow-up","",{type:"date"})}${F("fu_notes","Notes","",{cls:"full",ph:"What did they say?"})}</div><div class="row"><button class="pr" onclick="enqAct(${e.id},'followup')">Save follow-up</button></div>
+  <div class="sec" style="margin-top:18px">Close the enquiry</div><div class="grid">${F("cv_g","Gender (for the new member)","Male",{opts:["Male","Female","Other"]})}${F("ls_r","Reason if lost","",{ph:"e.g. Too expensive"})}</div><div class="row"><button class="pr" onclick="enqAct(${e.id},'convert')">Convert to member</button><button class="dg" onclick="enqAct(${e.id},'lost')">Mark lost</button></div>`:e.status==="Lost"?`<div class="row"><button onclick="enqAct(${e.id},'reopen')">Reopen</button></div>`:""}
+ <div class="sec" style="margin-top:18px">History</div><table><thead><tr><th>Date</th><th>How</th><th>Stage</th><th>Notes</th><th>By</th></tr></thead><tbody>${e.followups.map(f=>`<tr><td>${fmtD(f.date)}</td><td>${esc(f.mode)}</td><td>${esc(f.status_before)} → ${esc(f.status_after)}</td><td>${esc(f.notes)}</td><td>${esc(f.by||"")}</td></tr>`).join("")||empty(5,"No follow-ups yet")}</tbody></table><div class="msg" id="enmsg"></div>`,"",1)}
+async function enqAct(id,a){let b={};if(a==="followup")b={mode:V("fu_mode"),new_status:V("fu_st")||null,next_follow_up_date:V("fu_next")||null,notes:V("fu_notes")};if(a==="lost"){if(!V("ls_r"))return say("enmsg","Write why it was lost.");b={reason:V("ls_r")}}if(a==="convert")b={gender:V("cv_g")};
+ const j=await call("POST",`enquiries/${id}/${a}/`,b);if(!j.ok)return say("enmsg",err(j));loadEnq();
+ if(a==="convert"){closeModal();say("gmsg",`${j.member.name} is now member ${j.member.code}.`+(j.referral_reward?` The referrer got ${j.referral_reward.days} free days (${j.referral_reward.status}).`:""),true);WZ={m:await memberById(j.member.id)};if(WZ.m)wz2();return}await enqDetail(id);say("enmsg","Saved.",true)}
+
+/* ============================== DIET, PROGRESS, CONSENT ============================== */
+async function loadDiet(){if(!MP.mp_diet)mpInit("mp_diet",{placeholder:"Search member (trainers: own clients only)",onPick:()=>dietCurrent(),onClear:()=>dietCurrent()});const v=$("dv").value;const j=await call("GET","diet/plans/"+(v?"?view="+encodeURIComponent(v):""));if(!j.ok)return denied($("dlist2"),j,4);
+ $("dlist2").innerHTML=j.plans.map(p=>`<tr class="click" onclick="dietDetail(${p.id})"><td><div class="who"><div class="av">${ini(p.member.name)}</div><div><b>${esc(p.member.name)}</b><span class="muted">${esc(p.member.code)}</span></div></div></td><td>${esc(p.name)}<br><span class="muted">v${p.current_version}${p.trainer?" · "+esc(p.trainer.name):""}</span></td><td>${chip(p.status==="Archived"?"Removed":p.status)}</td><td>${p.review_date?fmtD(p.review_date):"—"}</td><td style="text-align:right;white-space:nowrap" onclick="event.stopPropagation()">${dietRowActs(p)}</td></tr>`).join("")||empty(5,"No diet plans yet","Pick a member on the right and give them a starter plan.");loadStarters()}
+let DTAB="s",STARTERS=[],TEMPLATES=[];
+const canDietLib=()=>can("diet","edit")&&ME&&ME.role!=="trainer";
+async function loadStarters(){$("dtab-s").classList.toggle("on",DTAB==="s");$("dtab-t").classList.toggle("on",DTAB==="t");$("d-foods").classList.toggle("hidden",!canDietLib());
+ if(DTAB==="t"){const j=await call("GET","diet/templates/");if(!j.ok)return;TEMPLATES=j.templates;
+  $("dstart").innerHTML=(canDietLib()?`<div class="row" style="margin:6px 0 4px"><button class="sm" onclick="dietEditor({mode:'template'})">+ New template</button><span class="muted" style="font-size:12px">Templates are your gym's own plans, ready to give to anyone.</span></div>`:"")+
+   (j.templates.map(t=>`<div class="meal starter"><div><b>${esc(t.name)}</b> <span class="muted">· ${esc(t.goal||"")}${t.diet_type?" · "+esc(t.diet_type):""}${t.weeks?` · ${t.weeks} weeks`:""}</span></div><div class="row" style="margin:0;flex-wrap:nowrap">${canDietLib()?`<button class="sm" onclick="tplEdit(${t.id})">Edit</button>`:""}<button class="sm" onclick="customiseFrom('t',${t.id})">Customise</button><button class="pr sm" onclick="assign(null,${t.id})">Give</button></div></div>`).join("")||`<div class="muted" style="margin-top:8px">No templates yet.${canDietLib()?" Create one, or open any plan and choose “Save as template”.":""}</div>`);return}
+ const j=await call("GET",`diet/starters/?goal=${encodeURIComponent(V("dg"))}&diet_type=${encodeURIComponent(V("dt"))}`);if(!j.ok)return;STARTERS=j.starters;
+ $("dstart").innerHTML=j.starters.map(s=>`<div class="meal starter"><div><b>${esc(s.name)}</b> <span class="muted">· ${s.meals_per_day} meals · ${s.weeks} weeks</span><div class="muted" style="font-size:12px">${esc(s.summary)}</div></div><div class="row" style="margin:0;flex-wrap:nowrap"><button class="sm" onclick="customiseFrom('s','${s.key}')">Customise</button><button class="pr sm" onclick="assign('${s.key}')">Give</button></div></div>`).join("")||`<div class="muted">No starter plan for this mix.</div>`}
+async function assign(key,tid,replace){const m=mpGet("mp_diet");if(!m)return say("dietmsg","Pick a member first.");
+ if(replace===undefined){const cur=await activeDiet(m.id);if(cur.length)return replaceAsk(m,cur,r=>assign(key,tid,r))}
+ const b=tid?{member_id:m.id,template_id:tid}:{member_id:m.id,starter_key:key};if(replace)b.replace_active=true;
+ const j=await call("POST","diet/plans/",b);if(!j.ok)return say("dietmsg",err(j));say("dietmsg",j.replaced?`New plan given to ${m.name}. The old plan is marked Completed.`:`Plan given to ${m.name}.`,true);loadDiet();dietCurrent();dietDetail(j.plan.id)}
+async function dietDetail(id){const j=await call("GET",`diet/plans/${id}/`);if(!j.ok)return fail(j);const p=j.plan,n=p.nutrition;
+ modal(`${esc(p.name)} · ${esc(p.member.name)} ${chip(p.status)} <span class="muted" style="font-weight:500">v${p.current_version}</span>`,`<div class="kpis" style="margin-bottom:10px"><div class="kpi ac"><span>Calories / day</span><b>${fmtN(n.day.kcal,"kcal")}</b></div><div class="kpi"><span>Protein</span><b>${fmtN(n.day.protein_g)} g</b></div><div class="kpi"><span>Carbs</span><b>${fmtN(n.day.carbs_g)} g</b></div><div class="kpi"><span>Fat</span><b>${fmtN(n.day.fat_g)} g</b></div></div>
+ <div class="muted">${p.start_date?fmtD(p.start_date):""} → ${p.end_date?fmtD(p.end_date):""}${n.complete?"":` · ${n.counted} of ${n.items} foods counted; edit the plan to fill in the rest`}</div>${p.review_flags.length?`<div class="warnbox" style="margin-top:10px">${p.review_flags.map(esc).join("<br>")}</div>`:""}
+ ${n.meals.map(m=>`<div class="meal"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(m.name)}</b> <span class="muted">${esc(m.time||"")}</span></div><span class="muted" style="font-size:12px">${m.items.length?`${fmtN(m.totals.kcal,"kcal")} kcal · P ${fmtN(m.totals.protein_g)} g · C ${fmtN(m.totals.carbs_g)} g · F ${fmtN(m.totals.fat_g)} g`:""}</span></div>
+  <div class="rep-tbl"><table style="margin-top:6px"><thead><tr><th>Food</th><th>Amount</th><th class="num">kcal</th><th class="num">Protein</th><th class="num">Carbs</th><th class="num">Fat</th></tr></thead><tbody>${m.items.map(i=>`<tr><td>${esc(i.food_name)}${i.manual?' <span class="muted" style="font-size:11px">(typed)</span>':""}</td><td class="muted">${esc(i.portion||[i.quantity,i.unit].filter(Boolean).join(" ")||"—")}</td>${NUTR.map(([k])=>`<td class="num">${fmtN(i.calc[k],k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`).join("")}`,
+ `<button class="left" onclick="closeModal();openMember('${p.member.id}','diet')">Member profile</button>${canDietLib()?`<button onclick="planToTemplate(${p.id})">Save as template</button>`:""}${p.status==="Active"?`<button onclick="setDiet(${p.id},'Completed')">Mark completed</button>`:""}${p.status==="Draft"?`<button onclick="makeActive(${p.id},'${p.member.id}')">Make active</button>`:""}${can("diet","edit")&&p.status!=="Archived"?`<button onclick="dietEditor({plan:${p.id}})">Edit plan</button><button onclick='dietChange(${JSON.stringify({id:p.member.id,name:p.member.name,code:p.member.code})})'>Change plan</button><button class="danger" onclick='dietRemove(${p.id},${JSON.stringify(p.member.name)},${JSON.stringify(p.name)},1)'>Remove</button>`:""}${can("diet","edit")&&p.status==="Archived"?`<button onclick="closeModal();dietRestore(${p.id},'${p.member.id}')">Restore</button>`:""}<button onclick="dietPdf(${p.id})">View PDF</button><button onclick="dietPdf(${p.id},1)">Download PDF</button><button onclick="emailDlg('diet',${p.id},'${p.member.id}')">Email</button><button class="pr wa" onclick="shareDiet(${p.id})">Send on WhatsApp</button>`,1);
+ $("md-b").insertAdjacentHTML("beforeend",`<div class="msg" id="dietsharemsg"></div>`);
+ if(p.versions&&p.versions.length>1)$("md-b").insertAdjacentHTML("beforeend",`<p class="muted" style="font-size:12px;margin:10px 0 0">Version ${p.current_version}${p.version.change_note?` · ${esc(p.version.change_note)}`:""}. Earlier versions are kept.</p>`)}
+async function pdfVia(endpoint,download){const w=download?null:window.open("about:blank","_blank");const j=await call("GET",endpoint);if(!j.ok){if(w)w.close();return say("gmsg",err(j))}
+ if(download){const a=document.createElement("a");a.href=j.download_url;a.download=j.filename;document.body.appendChild(a);a.click();a.remove()}else if(w)w.location.href=location.origin+j.url}
+const dietPdf=(id,download)=>pdfVia(`diet/plans/${id}/pdf-link/`,download);
+async function shareDiet(id){const w=window.open("about:blank","_blank");const j=await call("POST",`diet/plans/${id}/share/`,{});if(!j.ok){if(w)w.close();return fail(j)}w.location.href=j.whatsapp.link;
+ const note=j.pdf&&j.pdf.local_only?`WhatsApp opened with the plan. The PDF link in the message points to this computer (${location.host}), so the member's phone can only open it once FitDesk runs on your live server. Until then, use “Download PDF” and attach the file in WhatsApp.`:`WhatsApp opened with the plan and a link to the PDF (the link works for 60 days). On WhatsApp Desktop or Web you can also attach the PDF from “Download PDF”.`;
+ const box=$("dietsharemsg");if(box){box.textContent=note;box.className="msg show "+(j.pdf&&j.pdf.local_only?"err":"ok")}else say("gmsg",note,!(j.pdf&&j.pdf.local_only))}
+async function makeActive(id,mid,quiet){const cur=(await activeDiet(mid)).filter(p=>p.id!==id);const b={status:"Active"};
+ if(cur.length&&confirm(`This member already has “${cur.map(p=>p.name).join("”, “")}” as the current plan.\n\nOK = replace it (it's marked Completed)\nCancel = keep both plans active`))b.replace_active=true;
+ const j=await call("POST",`diet/plans/${id}/`,b);if(!j.ok)return fail(j);loadDiet();dietCurrent();if(quiet)return j;dietDetail(id)}
+async function setDiet(id,s){const j=await call("POST",`diet/plans/${id}/`,{status:s});if(!j.ok)return fail(j);loadDiet();dietCurrent();dietDetail(id)}
+/* change or remove a member's plan */
+function dietRowActs(p){if(!can("diet","edit"))return "";
+ return p.status==="Archived"?`<button class="sm" onclick="dietRestore(${p.id},'${p.member.id}')">Restore</button>`
+  :`<button class="sm" onclick="dietEditor({plan:${p.id}})">Edit</button> <button class="sm" onclick='dietChange(${JSON.stringify({id:p.member.id,name:p.member.name,code:p.member.code})})'>Change</button> <button class="sm ghost" onclick='dietRemove(${p.id},${JSON.stringify(p.member.name)},${JSON.stringify(p.name)})'>Remove</button>`}
+async function dietRemove(id,who,name,inModal){if(!confirm(`Remove “${name}” from ${who}?\n\nThe member won't see it as their plan any more. It stays in their history, and you can restore it from “Removed”.`))return;
+ const j=await call("POST",`diet/plans/${id}/`,{status:"Archived"});if(!j.ok)return fail(j);if(inModal)closeModal();say("dietmsg",`Removed “${name}” from ${who}.`,true);loadDiet();dietCurrent()}
+async function dietRestore(id,mid){const j=await makeActive(id,mid,1);if(!j)return;say("dietmsg",`Restored “${j.plan.name}” for ${j.plan.member.name}.`,true);loadDiet();dietCurrent()}
+/* "Change": pick the member on the right, then give a new plan; it replaces the current one */
+async function dietChange(m){closeModal();if(!MP.mp_diet)await loadDiet();mpSet("mp_diet",m);await dietCurrent();const c=$("mp_diet").closest(".card");c.scrollIntoView({behavior:"smooth",block:"start"});
+ say("dietmsg",`Choose the new plan for ${m.name} below (Give, or Customise first). You'll be asked whether it replaces the current plan.`,true)}
+async function activeDiet(mid){const j=await call("GET",`diet/plans/?member_id=${encodeURIComponent(mid)}&view=Active`);return j.ok?j.plans:[]}
+async function dietCurrent(){const box=$("dcur");if(!box)return;const m=mpGet("mp_diet");if(!m){box.innerHTML="";return}
+ const j=await call("GET",`diet/plans/?member_id=${encodeURIComponent(m.id)}`);if(!j.ok){box.innerHTML="";return}
+ const live=j.plans.filter(p=>p.status==="Active"||p.status==="Draft");
+ box.innerHTML=`<div class="curplan">${live.length?live.map(p=>`<div class="row" style="margin:0;justify-content:space-between;flex-wrap:nowrap;gap:8px"><div><span class="muted" style="font-size:12px">${p.status==="Draft"?"Draft":"Current plan"}</span><br><b>${esc(p.name)}</b> <span class="muted">v${p.current_version}</span></div><div class="row" style="margin:0;flex-wrap:nowrap"><button class="sm" onclick="dietDetail(${p.id})">Open</button>${can("diet","edit")?`<button class="sm" onclick="dietEditor({plan:${p.id}})">Edit</button><button class="sm ghost" onclick='dietRemove(${p.id},${JSON.stringify(m.name)},${JSON.stringify(p.name)})'>Remove</button>`:""}</div></div>`).join(""):`<span class="muted">${esc(m.name)} has no current diet plan. Give one below.</span>`}</div>`}
+/* when the member already has an active plan, ask: replace it or keep both */
+function replaceAsk(m,cur,go){$("dietmsg").className="msg show";$("dietmsg").innerHTML=`<div><b>${esc(m.name)}</b> already has ${cur.length>1?cur.length+" active plans":`“${esc(cur[0].name)}”`} as the current plan.</div><div class="row" style="margin:8px 0 0"><button class="pr sm" id="rp_y">Replace current plan</button><button class="sm" id="rp_n">Keep both</button><button class="sm ghost" id="rp_c">Cancel</button></div><div class="muted" style="font-size:12px;margin-top:6px">Replacing marks the old plan Completed, so it stays in the member's history.</div>`;
+ $("rp_y").onclick=()=>go(true);$("rp_n").onclick=()=>go(false);$("rp_c").onclick=()=>{$("dietmsg").className="msg"}}
+
+function progInit(){if(!MP.mp_prog)mpInit("mp_prog",{onPick:loadProg,onClear:()=>$("progbody").classList.add("hidden")})}
+async function loadProg(){const m=mpGet("mp_prog");if(!m)return;$("progbody").classList.remove("hidden");if(!V("pg_date"))$("pg_date").value=today();const j=await call("GET",`members/${m.id}/progress/`);if(!j.ok)return say("pgmsg",err(j));
+ const ws=j.weight_series.slice(-12),w=ws.map(x=>+x.weight_kg),mx=Math.max(...w,1),mn=Math.min(...w,mx)-2;
+ $("pgchart").innerHTML=ws.length?`<div class="muted" style="font-size:12px">Weight (kg)${j.target_weight_kg?` · target ${j.target_weight_kg}`:""}</div><div class="bar">${ws.map(x=>`<div style="height:${Math.max(6,(+x.weight_kg-mn)/(mx-mn||1)*100)}%"><span>${x.weight_kg}</span></div>`).join("")}</div><div class="barl">${ws.map(x=>`<span>${x.date.slice(5)}</span>`).join("")}</div>`:`<div class="empty"><b>No entries yet</b>Add the first measurement on the right.</div>`;
+ $("pglist").innerHTML=j.entries.slice().reverse().map(e=>`<tr><td>${fmtD(e.date)}</td><td>${e.weight_kg||"—"}</td><td>${e.waist_cm||"—"}</td><td>${e.body_fat_percent?e.body_fat_percent+"%":"—"}</td><td>${e.has_photo?`<button class="sm" onclick="photo(${e.id})">View</button>`:"—"}</td><td>${esc(e.recorded_by||"")}</td></tr>`).join("")||""}
+async function addProg(){const m=mpGet("mp_prog");if(!m)return;const f=new FormData();["date","weight_kg","body_fat_percent","chest_cm","waist_cm","hips_cm","arms_cm","thighs_cm"].forEach(k=>{if(V("pg_"+k))f.append(k,V("pg_"+k))});if($("pg_photo").files[0])f.append("photo",$("pg_photo").files[0]);
+ const j=await call("POST",`members/${m.id}/progress/`,null,f);if(!j.ok)return say("pgmsg",err(j));say("pgmsg","Entry saved.",true);["weight_kg","body_fat_percent","chest_cm","waist_cm","hips_cm","arms_cm","thighs_cm"].forEach(k=>$("pg_"+k).value="");$("pg_photo").value="";loadProg()}
+async function photo(id){const r=await fetch(API+`progress/${id}/photo/`,{headers:{Authorization:"Bearer "+tok()}});const b=await r.blob();window.open(URL.createObjectURL(b),"_blank")}
+async function goProgress(id){go("prog");progInit();const m=await memberById(id);if(m)mpSet("mp_prog",m)}
+
+let drawing=false;
+function initSig(){const c=$("sig"),x=c.getContext("2d");x.lineWidth=2.2;x.lineCap="round";x.strokeStyle="#172033";const pos=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
+ c.onpointerdown=e=>{drawing=true;c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...pos(e))};c.onpointermove=e=>{if(drawing){x.lineTo(...pos(e));x.stroke()}};c.onpointerup=()=>drawing=false}
+function clearSig(){const c=$("sig");c.getContext("2d").clearRect(0,0,c.width,c.height)}
+function conInit(){if(!MP.mp_con)mpInit("mp_con",{onPick:loadConsent,onClear:()=>$("conbody").classList.add("hidden")})}
+async function loadConsent(){const m=mpGet("mp_con");if(!m)return;const j=await call("GET",`members/${m.id}/consent/`);if(!j.ok)return say("gmsg",err(j));$("conbody").classList.remove("hidden");$("ctext").textContent=j.text;$("cn").value=m.name;
+ $("csigned").innerHTML=j.signed.map(s=>`<div class="meal">Signed by <b>${esc(s.signed_name)}</b> on ${new Date(s.signed_at).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}<br><span class="muted">Witness: ${esc(s.witnessed_by||"—")}</span><br><img src="${s.signature_png}" style="height:54px;background:#fff;border-radius:6px;margin-top:6px"></div>`).join("")||`<div class="empty"><b>Not signed yet</b>Ask the member to sign on the left.</div>`}
+async function signConsent(){const m=mpGet("mp_con");if(!m)return;const j=await call("POST",`members/${m.id}/consent/`,{signed_name:V("cn"),signature_png:$("sig").toDataURL("image/png"),health_answers:{heart_condition:V("ch")==="1",recent_injury:V("ci")==="1"}});if(!j.ok)return say("cmsg",err(j));say("cmsg","Consent saved.",true);clearSig();loadConsent()}
+async function goConsent(id){go("consent");conInit();const m=await memberById(id);if(m)mpSet("mp_con",m)}
+LOAD.prog=progInit;LOAD.consent=conInit;
+
+/* ============================== SETTINGS & SUPPORT ============================== */
+const SETS=[["Gym details",[["gym_name","Gym name"],["tagline","Tagline"],["phone","Phone"],["email","Email"],["address","Address",1]]],
+ ["Receipts & GST",[["gstin","GSTIN"],["gst_percent","GST %"],["apply_gst_by_default","Add GST by default","yn"],["trainer_share_includes_gst","Trainer's PT share is worked out on","gst"],["receipt_prefix","Receipt prefix"],["receipt_footer","Receipt footer",1],["terms","Terms on receipt",1]]],
+ ["UPI payments",[["upi_id","UPI ID (e.g. gym@okaxis)"],["upi_payee_name","UPI payee name"]]],
+ ["Member & staff codes",[["member_code_prefix","Code prefix (blank = from gym name)"]]],
+ ["Staff & payroll",[["holidays_paid","Pay staff for “Holiday” days","yn"]]],
+ ["Referrals",[["referral_reward_days","Free days the referring member gets when their friend joins (0 = off)"]]],
+ ["Messages & forms",[["whatsapp_receipt_template","WhatsApp receipt message",1],["enquiry_whatsapp_template","WhatsApp enquiry follow-up message",1],["consent_text","Consent form text (blank = default)",1]]]];
+async function loadSettings(){const j=await call("GET","gym/settings/");if(!j.ok)return denied($("setbody"),j);const s=j.settings;
+ const NOTE={"Staff & payroll":`Who can see or pay salaries is chosen per person by the owner, in <a class="link" href="../">Sign-in, team &amp; devices</a> → People.`,"Receipts & GST":"The trainer's share choice applies to new bills; saved bills keep the share they were made with."};
+ $("setbody").innerHTML=logoCard(s)+`<div class="card" id="emailcard"><h3>Email</h3><div class="muted">Loading…</div></div>`+SETS.map(([t,fs])=>`<div class="card"><h3>${t}</h3><div class="grid">${fs.map(([k,l,ty])=>ty==="yn"?F("s_"+k,l,s[k]?"1":"0",{opts:[["0","No"],["1","Yes"]]}):ty==="gst"?F("s_"+k,l,s[k]?"1":"0",{opts:[["1","Amount including GST"],["0","Amount before GST"]]}):F("s_"+k,l,s[k]??"",ty?{ta:1}:{})).join("")}${t==="Member & staff codes"?`<div><label>Codes will look like</label><input disabled value="Members ${esc(s.effective_member_code_prefix)}000001 · Staff ${esc(s.effective_member_code_prefix)}-S001 · Trainers ${esc(s.effective_member_code_prefix)}-T001"></div>`:""}</div>${NOTE[t]?`<p class="muted" style="margin:10px 0 0;font-size:12px">${NOTE[t]}</p>`:""}</div>`).join("")
+ const rr=await call("GET","reminders/settings/");if(!rr.ok)return;const q=rr.settings;REMSET=q;const yn=k=>F("r_"+k,{renewal_on:"Renewal reminders",dues_on:"Dues reminders",birthday_on:"Birthday wishes",inactive_on:"Not-visiting call list",owner_summary_on:"Owner's daily summary"}[k],q[k]?"1":"0",{opts:[["1","On"],["0","Off"]]});
+ emailCard();$("setbody").insertAdjacentHTML("beforeend",`<div class="card"><h3>Reminders &amp; daily list</h3><div class="grid">${yn("renewal_on")}${F("r_renewal_days","Renewal reminder days",q.renewal_days,{ph:"7,3,1,0,-3"})}${yn("dues_on")}${F("r_dues_every_days","Remind dues again after (days)",q.dues_every_days,{im:"numeric"})}${yn("birthday_on")}${yn("inactive_on")}${F("r_inactive_after_days","Call list after not visiting (days)",q.inactive_after_days,{im:"numeric"})}${yn("owner_summary_on")}${F("r_owner_summary_phone","Send owner's summary to",q.owner_summary_phone,{ph:q.owner_summary_phone_effective||"Owner's mobile"})}</div>
+  <p class="muted" style="margin:10px 0 0;font-size:12px">Renewal days: 7 = a week before the last day, 0 = on the last day, −3 = three days after it ended. The list is made every morning; members who already renewed are left out.</p></div>
+  <div class="card"><h3>WhatsApp message wording</h3><p class="muted" style="margin:0 0 10px;font-size:12px">These fill in by themselves: ${Object.entries(q.placeholders).map(([k,v])=>`<code>{${k}}</code> ${esc(v)}`).join(" · ")}</p><div class="grid">${TPLS.map(([k,l])=>`<div class="full"><label>${l} <a class="link" style="cursor:pointer;font-weight:500;margin-left:6px" onclick="$('r_${k}').value=REMSET.defaults['${k.slice(4)}']">Reset to default</a></label><textarea id="r_${k}" style="height:110px">${esc(q[k]||q.defaults[k.slice(4)])}</textarea></div>`).join("")}</div></div>`)}
+/* ---------------- email ---------------- */
+let EMS=null;
+const EM_PROV={gmail:"Gmail",outlook:"Outlook / Hotmail / Microsoft 365",zoho:"Zoho Mail",custom:"Other (SMTP server)"};
+const EM_HELP={gmail:`Gmail needs an <b>app password</b>, not your normal password: Google Account → Security → turn on 2-Step Verification → search “App passwords” → create one named FitDesk, and paste the 16 letters here.`,
+ outlook:`Outlook may need an app password if 2-step sign-in is on (Microsoft account → Security → App passwords). Some work accounts block this; ask your IT person.`,
+ zoho:`Zoho: Settings → Security → App passwords → generate one for FitDesk.`,custom:`Use the SMTP details from your email provider (usually port 587 with TLS, or 465 with SSL).`};
+async function emailCard(){const box=$("emailcard");if(!box)return;const j=await call("GET","email/settings/");if(!j.ok){box.remove();return}EMS=j.settings;const e=EMS,own=can("settings","edit");
+ const status=e.ready?(e.verified_at?`<span class="chip c-ok">Working · tested ${fmtD(e.verified_at)}</span>`:`<span class="chip c-wn">Saved · send a test email</span>`):`<span class="chip c-dg">Not set up</span>`;
+ box.innerHTML=`<h3 style="display:flex;gap:10px;align-items:center">Email ${status}</h3><p class="muted" style="margin:0 0 12px;font-size:13px">Send receipts and diet plans (PDF attached) and reminders by email, from your gym's own email address. Members see your address and their replies come to you.</p>
+ ${e.last_error?`<div class="warnbox" style="margin-bottom:10px">Last problem: ${esc(e.last_error)}</div>`:""}
+ <div class="grid">${F("em_provider","Email provider",e.provider,{opts:Object.entries(EM_PROV)})}${F("em_sender","Your gym's email *",e.sender_email,{ph:"hmfitness@gmail.com"})}
+ <div><label>${e.has_password?"App password (saved; type to change)":"App password *"}</label><input id="em_pw" type="password" autocomplete="new-password" placeholder="${e.has_password?"••••••••••••••••":"16-letter app password"}"></div>
+ ${F("em_name","Name members see",e.from_name,{ph:"Blank = your gym's name"})}${F("em_reply","Replies go to",e.reply_to,{ph:"Blank = the same email"})}
+ <div id="em_custom" class="full ${e.provider==="custom"?"":"hidden"}"><div class="grid">${F("em_host","SMTP server",e.smtp_host,{ph:"smtp.yourdomain.com"})}${F("em_port","Port",e.smtp_port,{im:"numeric"})}${F("em_sec","Security",e.security,{opts:[["tls","TLS (587)"],["ssl","SSL (465)"]]})}${F("em_user","Username",e.username,{ph:"Blank = the email above"})}</div></div></div>
+ <p class="muted" id="em_help" style="font-size:12px;margin:10px 0 0">${EM_HELP[e.provider]}</p>
+ ${own?`<div class="row"><button class="pr" onclick="emailSave()">Save email settings</button><button onclick="emailTest()" ${e.ready?"":"disabled"}>Send a test email</button>${e.has_password?`<button class="ghost" onclick="emailSave(1)">Remove password</button>`:""}</div>`:`<p class="muted" style="font-size:12px">Only the owner can change this.</p>`}<div class="msg" id="emsmsg"></div>`;
+ if(!own)box.querySelectorAll("input,select").forEach(x=>x.disabled=true);
+ $("em_provider").onchange=()=>{$("em_custom").classList.toggle("hidden",V("em_provider")!=="custom");$("em_help").innerHTML=EM_HELP[V("em_provider")]}}
+async function emailSave(clear){const b={mode:"own",provider:V("em_provider"),sender_email:V("em_sender"),from_name:V("em_name"),reply_to:V("em_reply")};
+ if(V("em_provider")==="custom")Object.assign(b,{smtp_host:V("em_host"),smtp_port:V("em_port"),security:V("em_sec"),username:V("em_user")});
+ if(V("em_pw"))b.password=V("em_pw");if(clear)b.clear_password=true;
+ const j=await call("POST","email/settings/",b);if(!j.ok)return say("emsmsg",err(j));await emailCard();say("emsmsg",j.settings.ready?"Saved. Now send a test email to check it works.":"Saved. Add the app password to finish.",true)}
+async function emailTest(){const btn=event&&event.target;if(btn){btn.disabled=true;btn.textContent="Sending…"}const j=await call("POST","email/test/",{});
+ if(!j.ok){await emailCard();return say("emsmsg",err(j))}await emailCard();say("emsmsg",`Test email sent to ${j.to}. Check that inbox (and Spam).`,true)}
+/* the "Send by email" window: receipts, diet plans, reminders */
+const EM_KIND={receipt:["bills/{id}/email/","the receipt, with the PDF attached"],diet:["diet/plans/{id}/email/","the diet plan, with the PDF attached"],reminder:["reminders/{id}/email/","this reminder message"]};
+async function emailDlg(kind,id,memberId,after){const [st,mj]=await Promise.all([call("GET","email/settings/"),call("GET",`members/${memberId}/`)]);
+ const m=mj.ok?mj.member:{name:"the member",email:""};
+ if(st.ok&&!st.settings.ready)return modal("Send by email",`<div class="warnbox">Email isn't set up yet.</div><p class="muted">${can("settings","edit")?"Add your gym's email and app password in Settings → Email, send a test, then come back.":"Ask the owner to set up email in Settings → Email."}</p>`,
+  `<button onclick="closeModal()">Close</button>${can("settings","edit")?`<button class="pr" onclick="closeModal();go('settings');setTimeout(()=>$('emailcard')&&$('emailcard').scrollIntoView({behavior:'smooth'}),700)">Open Settings</button>`:""}`);
+ modal(`Send by email · ${esc(m.name)}`,`<div class="grid">${F("em_to","Email address *",m.email||"",{cls:"full",ph:"member@gmail.com"})}${can("members","edit")?`<label class="ck full" id="em_savew"><input type="checkbox" id="em_save" checked> <span>Save this email on ${esc(m.name)}'s profile</span></label>`:""}</div>
+  <p class="muted" style="font-size:13px;margin:10px 0 0">Sends ${EM_KIND[kind][1]}${st.ok?` from <b>${esc(st.settings.sender_email)}</b>`:""}.</p><div class="msg" id="emmsg"></div>`,
+  `<button onclick="closeModal()">Cancel</button><button class="pr" id="em_go">Send email</button>`);
+ const sync=()=>{const w=$("em_savew");if(w)w.classList.toggle("hidden",!V("em_to")||V("em_to").toLowerCase()===(m.email||"").toLowerCase())};$("em_to").oninput=sync;sync();
+ $("em_go").onclick=async()=>{const b={to:V("em_to")};if($("em_save")&&$("em_save").checked)b.save_to_member=true;$("em_go").disabled=true;$("em_go").textContent="Sending…";
+  const j=await call("POST",EM_KIND[kind][0].replace("{id}",id),b);if(!j.ok){$("em_go").disabled=false;$("em_go").textContent="Send email";return say("emmsg",err(j))}
+  closeModal();say("gmsg",`Email sent to ${j.to}.`,true);if(kind==="reminder"&&j.reminder&&typeof remPut==="function")remPut(j.reminder);if(after)after(j)}}
+
+/* ---------------- removing a member (duplicate / added by mistake) ---------------- */
+let RM_NAME="";
+const recList=o=>Object.entries(o).map(([k,v])=>{const w=k.replace(/_/g," ");return `${v} ${v===1?w.replace(/s$/,"").replace(/check in$/,"check-in"):w.replace(/check ins/,"check-ins")}`}).join(", ");
+const DEL_CARD=m=>`<div class="meal"><b>Delete permanently</b><p class="muted" style="margin:4px 0 8px;font-size:13px">Nothing is linked to this entry (no bills, visits or plans), so it can be deleted for good. Use this for an entry added twice or by mistake.</p>
+   <button class="dg" onclick="deleteMember('${m.id}',RM_NAME)">Delete ${esc(m.name)} (${esc(m.code)})</button></div>`;
+async function removeMember(id){const [mj,rj]=await Promise.all([call("GET",`members/${id}/`),call("GET",`members/${id}/records/`)]);if(!mj.ok)return fail(mj);if(!rj.ok)return fail(rj);
+ const m=mj.member,rec=rj.records,has=Object.keys(rec).length,dups=rj.same_phone;
+ const recTxt=recList(rec);
+ if(typeof pfClose==="function")pfClose();RM_NAME=m.name;
+ modal(`Remove ${esc(m.name)} · ${esc(m.code)}`,`
+  ${dups.length?`<div class="warnbox" style="margin-bottom:12px">Same mobile number as ${dups.map(d=>`<b>${esc(d.name)}</b> (${esc(d.code)})`).join(", ")}, so this looks like a duplicate.</div>`:""}
+  ${has?"":DEL_CARD(m)}<div class="meal" data-nofocus><b>${has?"Merge into the right entry":"Or merge into another entry"}</b><p class="muted" style="margin:4px 0 8px;font-size:13px">Moves ${has?recTxt:"anything this entry has"} to the member you pick, fills in any details missing there (email, birthday…), then deletes this entry. Receipt numbers don't change.</p>
+   <div id="mp_merge"></div><div class="row" style="margin:8px 0 0"><button class="pr" onclick="mergeMember('${m.id}')">Merge &amp; delete this entry</button></div></div>
+  ${has?`<div class="meal"><b>${m.is_archived?"Restore":"Archive"}</b><p class="muted" style="margin:4px 0 8px;font-size:13px">${m.is_archived?"Brings the member back to the list.":`This member has ${recTxt}, so they can't be deleted. Archiving hides them from the list and reminders but keeps all history. Find them later under “Archived”.`}</p>
+   <button onclick="archiveMember('${m.id}',${!m.is_archived})">${m.is_archived?"Restore member":"Archive member"}</button></div>`
+  :(m.is_archived?"":`<p class="muted" style="font-size:12px">Or <a class="link" style="cursor:pointer" onclick="archiveMember('${m.id}',true)">archive</a> to hide them without deleting.</p>`)}
+  <div class="msg" id="rmmsg"></div>`,`<button onclick="closeModal()">Cancel</button>`,1);
+ mpInit("mp_merge",{placeholder:"Pick the member to keep",exclude:()=>[m.id]});if(dups.length)mpSet("mp_merge",dups[0])}
+async function deleteMember(id,name){if(!confirm(`Delete ${name} permanently?\n\nThis can't be undone.`))return;const j=await call("POST",`members/${id}/delete/`,{});if(!j.ok)return say("rmmsg",err(j));closeModal();say("gmsg",`${name} deleted.`,true);if($("mlist"))loadMembers()}
+async function archiveMember(id,arch){const j=await call("POST",`members/${id}/archive/`,{archived:arch});if(!j.ok)return say("rmmsg",err(j));closeModal();say("gmsg",arch?`${j.member.name} archived. Find them under “Archived”.`:`${j.member.name} restored.`,true);if($("mlist"))loadMembers()}
+async function mergeMember(id){const k=mpGet("mp_merge");if(!k)return say("rmmsg","Pick the member to keep.");if(!confirm(`Move everything to ${k.name} (${k.code}) and delete this entry?\n\nThis can't be undone.`))return;
+ const j=await call("POST",`members/${id}/merge/`,{into_id:k.id});if(!j.ok)return say("rmmsg",err(j));closeModal();const n=Object.values(j.moved).reduce((a,b)=>a+b,0);
+ say("gmsg",`Merged into ${j.member.name} (${j.member.code})${n?`: moved ${recList(j.moved)}`:""}.`,true);if($("mlist"))loadMembers();openMember(j.member.id)}
+async function saveSettings(){const b={};SETS.forEach(([t,fs])=>fs.forEach(([k,l,ty])=>{b[k]=ty==="yn"||ty==="gst"?V("s_"+k)==="1":$("s_"+k).value}));const j=await call("POST","gym/settings/",b);if(!j.ok)return say("smsg",err(j));
+ if($("r_renewal_days")){const rb={};["renewal_on","dues_on","birthday_on","inactive_on","owner_summary_on"].forEach(k=>rb[k]=V("r_"+k)==="1");["renewal_days","dues_every_days","inactive_after_days","owner_summary_phone"].forEach(k=>rb[k]=V("r_"+k));TPLS.forEach(([k])=>rb[k]=$("r_"+k).value);
+  const r=await call("POST","reminders/settings/",rb);if(!r.ok)return say("smsg",err(r))}
+ say("smsg","Settings saved.",true);loadSettings()}
+async function loadSup(){const j=await call("GET","support/");if(!j.ok)return denied($("suplist"),j,4);
+ $("suplist").innerHTML=j.tickets.map(t=>`<tr><td><b>${esc(t.subject)}</b>${t.message?`<br><span class="muted">${esc(t.message.slice(0,90))}</span>`:""}</td><td>${esc(t.category||"")}</td><td>${chip(t.status)}</td><td>${fmtD((t.created_at||"").slice(0,10))}</td></tr>`).join("")||empty(4,"No tickets","Something not working? Raise a ticket.")}
+function ticketForm(){modal("New support ticket",`<div class="grid">${F("tk_cat","Category","Technical Issue",{opts:["Technical Issue","Account & Access","Billing & Payment","Feature Request","Other"]})}${F("tk_sub","Subject *","",{cls:"two"})}${F("tk_msg","Message *","",{ta:1,ph:"What happened? What did you expect?"})}</div><div class="msg" id="tkmsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="ticketSave()">Send</button>`)}
+async function ticketSave(){const j=await call("POST","support/",{category:V("tk_cat"),subject:V("tk_sub"),message:V("tk_msg")});if(!j.ok)return say("tkmsg",err(j));closeModal();say("gmsg","Sent to FitDesk support.",true);loadSup()}
+
+/* ============================== REMINDERS ============================== */
+let REM={data:null,kind:"",older:false},REMSET=null;
+const TPLS=[["tpl_renewal","Renewal reminder"],["tpl_expired","Membership ended"],["tpl_dues","Dues reminder"],["tpl_birthday","Birthday wish"],["tpl_inactive","Not visiting"]];
+const RK=[["","All"],["renewal","Renewals"],["expired","Ended"],["dues","Dues"],["birthday","Birthdays"],["inactive","Not visiting"],["owner_summary","Owner summary"]];
+async function loadRem(){if(!V("rem-date"))$("rem-date").value=today();REM.older=false;const j=await call("GET","reminders/?date="+V("rem-date"));if(!j.ok)return denied($("rem-list"),j);REM.data=j;
+ $("rem-ran").textContent=j.ran_at?`List made ${new Date(j.ran_at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}`:"";
+ $("rem-older").innerHTML=j.older_pending&&j.date===j.today?`<div class="warnbox" style="margin-bottom:12px">${j.older_pending} reminder${j.older_pending>1?"s":""} from the last two weeks ${j.older_pending>1?"weren't":"wasn't"} sent. <a class="link" style="cursor:pointer" onclick="loadOlder()">Show ${j.older_pending>1?"them":"it"}</a></div>`:"";renderRem()}
+async function loadOlder(){const j=await call("GET","reminders/older/");if(!j.ok)return say("rem-msg",err(j));REM.older=true;REM.data={...REM.data,reminders:j.reminders};$("rem-older").innerHTML=`<div class="note" style="margin-bottom:12px">Showing earlier days that weren't sent. <a class="link" style="cursor:pointer" onclick="loadRem()">Back to today</a></div>`;renderRem()}
+async function runRem(){const j=await call("POST","reminders/run/",{date:V("rem-date")||today()});if(!j.ok)return say("rem-msg",err(j));const n=Object.values(j.created).reduce((a,b)=>a+b,0);await loadRem();say("rem-msg",n?`${n} new item${n>1?"s":""} added.`:"Checked: nothing new since the last run.",true)}
+function renderRem(){const j=REM.data;if(!j)return;const st=V("rem-st"),all=j.reminders;
+ const cnt=k=>all.filter(r=>(!k||r.kind===k)&&r.status==="pending").length;
+ $("rem-tabs").innerHTML=RK.filter(([k])=>!k||all.some(r=>r.kind===k)).map(([k,l])=>`<button class="${REM.kind===k?"on":""}" onclick="REM.kind='${k}';renderRem()">${l}<span class="n">${cnt(k)}</span></button>`).join("");
+ const items=all.filter(r=>(!REM.kind||r.kind===REM.kind)&&(!st||(st==="sent"?["sent","done"].includes(r.status):r.status===st)));
+ $("rem-list").innerHTML=items.map(remCard).join("")||`<div class="card"><div class="empty"><b>${st==="pending"?(all.length?"All sent 🎉":"Nothing to send today"):"Nothing here"}</b>${st==="pending"&&!all.length?"No renewals, dues, birthdays or missed visits today.":""}</div></div>`}
+function remInfo(r){const m=r.meta||{};switch(r.kind){
+ case "renewal":return `Ends ${fmtD(m.end_date)} · ${r.days===0?"<b>last day today</b>":r.days===1?"tomorrow":r.days+" days left"} · ${esc(m.plan||"")}`;
+ case "expired":return `Ended ${fmtD(m.end_date)} · ${r.days} day${r.days>1?"s":""} ago · ${esc(m.plan||"")}`;
+ case "dues":return `Balance due <b>${rs(r.amount)}</b>`;case "birthday":return "🎂 Birthday today";
+ case "inactive":return `Last visit ${m.last_visit?fmtD(m.last_visit):"never"} · <b>${r.days} days</b> away · plan till ${fmtD(m.end_date)}`;
+ case "owner_summary":return `Summary of ${fmtD(m.summary_date)} for the owner`;}return ""}
+function remCard(r){const who=r.member?`<div class="who"><div class="av">${ini(r.member.name)}</div><div><b class="pf-open" onclick="openMember('${r.member.id}')">${esc(r.member.name)}</b><span class="muted">${esc(r.member.code)} · ${esc(r.phone)}</span></div></div>`:`<div class="who"><div class="av">₹</div><div><b>Owner's daily summary</b><span class="muted">to ${esc(r.phone||"—")}</span></div></div>`;
+ const done=r.status!=="pending",st=r.status==="sent"?chip(`Sent${r.sent_by?" by "+r.sent_by:""} ${new Date(r.sent_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}`,"c-ok"):r.status==="done"?chip(`Called: ${r.call_outcome}`,"c-ok"):r.status==="skipped"?chip("Skipped"):"";
+ const acts=done?`<button class="sm" onclick="remAct(${r.id},'reopen')">Undo</button>`:`${r.whatsapp_link?`<button class="wa" onclick="remSend(${r.id})">Send on WhatsApp</button>`:`<span class="muted" style="font-size:12px">No mobile number</span>`}${r.member&&r.kind!=="inactive"?`<button class="sm" onclick="emailDlg('reminder',${r.id},'${r.member.id}')">Email</button>`:""}
+  ${r.kind==="inactive"?`<a href="tel:${esc(r.phone)}" style="text-decoration:none"><button style="width:100%">Call ${esc(r.phone)}</button></a><button onclick="remCall(${r.id})">Log call result</button>`:""}
+  ${r.upi_link?`<button class="sm" onclick="remQR(${r.id})">UPI QR for ${rs(r.amount)}</button>`:""}<button class="sm ghost" onclick="remAct(${r.id},'skip')">Skip</button>`;
+ return `<div class="rem ${done?"done":""}"><div>${who}<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${chip(r.kind_label,{renewal:"c-wn",expired:"c-dg",dues:"c-dg",birthday:"c-p",inactive:"c-wn",owner_summary:"c-p"}[r.kind])} <span class="muted" style="font-size:12.5px">${remInfo(r)}</span>${REM.older?` <span class="muted" style="font-size:12px">· list of ${fmtD(r.for_date)}</span>`:""} ${st}</div>
+  <div class="msgtxt" onclick="this.classList.toggle('open')" title="Click to show all">${esc(r.text)}</div>${r.notes?`<div class="muted" style="font-size:12px;margin-top:6px">Note: ${esc(r.notes)}</div>`:""}</div><div class="acts">${acts}</div></div>`}
+const remGet=id=>REM.data.reminders.find(x=>x.id===id);
+function remPut(x){const a=REM.data.reminders,i=a.findIndex(y=>y.id===x.id);if(i>=0)a[i]=x;renderRem()}
+async function remSend(id){const r=remGet(id);window.open(r.whatsapp_link,"_blank");const j=await call("POST",`reminders/${id}/sent/`,{});if(!j.ok)return say("rem-msg",err(j));remPut(j.reminder);say("rem-msg",`Marked as sent to ${r.member?r.member.name:"the owner"}. Use Undo if WhatsApp didn't send it.`,true)}
+async function remAct(id,a,body){const j=await call("POST",`reminders/${id}/${a}/`,body||{});if(!j.ok)return say("rem-msg",err(j));remPut(j.reminder)}
+function remCall(id){const r=remGet(id);modal(`Call result · ${esc(r.member.name)}`,`<p class="muted" style="margin-top:0">${remInfo(r)}</p><div class="grid">${F("cl_out","What happened?",REM.data.call_outcomes[0],{opts:REM.data.call_outcomes})}${F("cl_notes","Notes","",{cls:"full",ph:"e.g. Was travelling, back on Monday"})}</div><div class="msg" id="clmsg"></div>`,`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="remCallSave(${id})">Save</button>`)}
+async function remCallSave(id){const j=await call("POST",`reminders/${id}/call/`,{outcome:V("cl_out"),notes:V("cl_notes")});if(!j.ok)return say("clmsg",err(j));closeModal();remPut(j.reminder)}
+function remQR(id){const r=remGet(id);modal(`Pay ${rs(r.amount)} by UPI`,`<p class="muted" style="margin-top:0">Show this at the counter: the member scans it with any UPI app. Then record the payment in Bills &amp; dues with the UPI reference.</p><div id="rqr" style="background:#fff;padding:12px;border-radius:12px;width:max-content;margin:auto"></div><p style="text-align:center;margin-bottom:0"><a class="link" href="${esc(r.upi_link)}">${esc(r.upi_link)}</a></p>`,`<button onclick="closeModal()">Close</button>`);if(window.QRCode)new QRCode($("rqr"),{text:r.upi_link,width:200,height:200});else $("rqr").innerHTML='<span class="muted">QR library not loaded (offline?)</span>'}
+
+/* ============================== REPORTS ============================== */
+const REPS=[["summary","Daily summary"],["collections","Collections"],["renewals","Renewals"],["trainers","Trainers & PT"],["profit","Income vs expenses"],["enquiries","Enquiries"],["gst","GST & Tally"]];
+const REPNEED={summary:"billing",collections:"billing",renewals:"members",trainers:"salaries",profit:"expenses",enquiries:"enquiries",gst:"billing"};
+let REP="summary",REPDATA=null;
+const isoD=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function repPreset(v){const t=new Date();let f=new Date(t.getFullYear(),t.getMonth(),1),e=t;if(v==="today")f=t;if(v==="last"){f=new Date(t.getFullYear(),t.getMonth()-1,1);e=new Date(t.getFullYear(),t.getMonth(),0)}if(v==="q")f=new Date(t.getFullYear(),t.getMonth()-2,1);if(v==="fy")f=new Date(t.getMonth()>=3?t.getFullYear():t.getFullYear()-1,3,1);
+ $("rep-from").value=isoD(f);$("rep-to").value=isoD(e);$("rep-preset").value="";loadRep()}
+const fmtV=(v,t)=>v===null||v===undefined||v===""?"—":t==="money"?rs(v):t==="pct"?`${v}%`:t==="date"?fmtD(String(v)):t==="int"?Number(v).toLocaleString("en-IN"):esc(v);
+async function loadRep(){if(!V("rep-to")){$("rep-to").value=today();$("rep-from").value=today().slice(0,8)+"01"}
+ const tabs=REPS.filter(([k])=>can(REPNEED[k]));if(!tabs.some(([k])=>k===REP))REP=tabs.length?tabs[0][0]:"summary";
+ $("rep-tabs").innerHTML=tabs.map(([k,l])=>`<button class="${REP===k?"on":""}" onclick="REP='${k}';loadRep()">${l}</button>`).join("");
+ $("rep-group").classList.toggle("hidden",REP!=="collections");$("rep-xl").classList.toggle("hidden",REP==="summary"||!can("reports","export"));
+ $("rep-from").disabled=REP==="summary";if(REP==="summary")return loadSummary();
+ const q=`from=${V("rep-from")}&to=${V("rep-to")}${REP==="collections"?"&group="+V("rep-group"):""}`;const j=await call("GET",`reports/${REP}/?${q}`);if(!j.ok)return denied($("rep-body"),j);REPDATA=j.report;const r=j.report;
+ let chart="";const t0=r.tables[0];const vk=REP==="collections"?"total":REP==="profit"?"income":null;
+ if(vk&&t0&&t0.rows.length>1&&t0.rows.length<=62){const vals=t0.rows.map(x=>+x[vk]),mx=Math.max(...vals,1),lk=t0.columns[0].key;chart=`<div class="card"><h3>${esc(t0.name)}</h3><div class="bar">${t0.rows.map(x=>`<div style="height:${Math.max(2,+x[vk]/mx*100)}%" title="${esc(x[lk])}: ${rs(x[vk])}">${t0.rows.length<=14?`<span>${rs(x[vk]).replace("₹","")}</span>`:""}</div>`).join("")}</div><div class="barl">${t0.rows.map(x=>`<span>${t0.rows.length<=14?esc(String(x[lk]).slice(5)):""}</span>`).join("")}</div></div>`}
+ $("rep-body").innerHTML=`<div class="kpis">${r.summary.map((x,i)=>`<div class="kpi ${i===0?"ac":""}"><span>${esc(x.label)}</span><b>${fmtV(x.value,x.type)}</b></div>`).join("")}</div>${chart}
+  ${r.tables.map(t=>`<div class="card"><h3>${esc(t.name)} <span class="muted" style="font-weight:500">· ${t.rows.length}</span></h3><div class="rep-tbl"><table><thead><tr>${t.columns.map(c=>`<th class="${["money","int","pct"].includes(c.type)?"num":""}">${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${t.rows.map(x=>`<tr ${x.member_id?`class="click" onclick="openMember('${x.member_id}')"`:""}>${t.columns.map(c=>`<td class="${["money","int","pct"].includes(c.type)?"num":""}">${fmtV(x[c.key],c.type)}</td>`).join("")}</tr>`).join("")||empty(t.columns.length,"Nothing in this period")}</tbody></table></div></div>`).join("")}
+  ${r.notes.length?`<p class="muted" style="font-size:12px">${r.notes.map(esc).join("<br>")}</p>`:""}`}
+async function loadSummary(){const d=V("rep-to")||today();const j=await call("GET","summary/?date="+d);if(!j.ok)return denied($("rep-body"),j);const s=j.summary;
+ const k=[["Collected",rs(s.collected)],["This month so far",rs(s.month_to_date)],["New joins",s.new_joins],["Renewals",s.renewals],["New members",s.new_members],["Check-ins",s.checkins],["Expenses",rs(s.expenses)],["Enquiries (joined)",`${s.enquiries_new} (${s.enquiries_joined})`],["Ending in 7 days",s.expiring_7_days],["Pending dues",rs(s.pending_dues)]];
+ $("rep-body").innerHTML=`<div class="kpis">${k.map(([a,b],i)=>`<div class="kpi ${i===0?"ac":""}"><span>${a}</span><b>${b}</b></div>`).join("")}</div>
+  ${Object.keys(s.by_mode).length?`<div class="card"><h3>Collected by payment mode</h3><div class="row" style="margin:0">${Object.entries(s.by_mode).map(([m,v])=>chip(`${m} ${rs(v)}`,"c-p")).join(" ")}</div></div>`:""}
+  <div class="card"><h3>WhatsApp message <span class="muted" style="font-weight:500">· ${fmtD(s.date)}</span></h3><div class="meal" style="white-space:pre-wrap;margin-top:0">${esc(s.text)}</div><div class="row">${s.whatsapp_link?`<a href="${s.whatsapp_link}" target="_blank" style="text-decoration:none"><button class="wa">Send to ${esc(s.phone)}</button></a>`:""}<button onclick="navigator.clipboard&&navigator.clipboard.writeText(${esc(JSON.stringify(s.text))});say('gmsg','Copied.',true)">Copy text</button></div>
+  <p class="muted" style="font-size:12px;margin:10px 0 0">The day's summary is also added to the owner's reminder list every morning. Pick another day with the “To” date.</p></div>`}
+async function repExport(){if(!REPDATA)return;try{const q=`from=${V("rep-from")}&to=${V("rep-to")}${REP==="collections"?"&group="+V("rep-group"):""}`;const {blob,name}=await blobFetch(`reports/${REP}/export/?${q}`);const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name||`fitdesk-${REP}.xlsx`;document.body.appendChild(a);a.click();a.remove()}catch(e){say("gmsg",e.message)}}
+
+/* ============================== DIET PLAN EDITOR ============================== */
+let DE=null,FOODS=null;
+const DUNITS=["","g","ml","pc","egg","slice","cup","glass","bowl","katori","plate","medium","tbsp","tsp","scoop"];
+const NUTR=[["kcal","kcal",""],["protein_g","Protein","g"],["carbs_g","Carbs","g"],["fat_g","Fat","g"]];let ALLERGEN_TAGS={};
+const MEALNAMES=["Early Morning","Breakfast","Mid-morning","Lunch","Evening Snack","Pre-workout","Post-workout","Dinner","Bedtime"];
+async function loadFoods(){if(FOODS)return FOODS;const j=await call("GET","diet/foods/?builtin=1");FOODS=j.ok?j.foods:[];ALLERGEN_TAGS=j.allergen_tags||{};return FOODS}
+const fnorm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+function findFood(name){const n=fnorm(name);if(!n)return null;return FOODS.find(f=>fnorm(f.name)===n)||FOODS.find(f=>(f.aliases||[]).some(a=>fnorm(a)===n))||null}
+const toItem=i=>({food_name:i.food_name||i.food||"",quantity:i.quantity??"",unit:i.unit||"",portion:i.portion||"",manual:!!i.manual,kcal:i.manual?i.kcal??"":"",protein_g:i.manual?i.protein_g??"":"",carbs_g:i.manual?i.carbs_g??"":"",fat_g:i.manual?i.fat_g??"":""});
+async function customiseFrom(kind,ref){let src;
+ if(kind==="s"){src=STARTERS.find(x=>x.key===ref);if(!src)return;dietEditor({seed:{name:src.name,goal:src.goal,diet_type:src.diet_type,weeks:src.weeks,instructions:src.instructions||"",meals:src.meals.map(m=>({name:m.name,time:m.time,items:m.items.map(toItem)}))}})}
+ else{src=TEMPLATES.find(x=>x.id===ref);if(!src)return;dietEditor({seed:{name:src.name,goal:src.goal,diet_type:src.diet_type,weeks:src.weeks,instructions:src.instructions||"",meals:(src.meals||[]).map(m=>({name:m.name,time:m.time,items:(m.items||[]).map(toItem)}))}})}}
+function tplEdit(id){const t=TEMPLATES.find(x=>x.id===id);if(!t)return;dietEditor({mode:"template",tid:id,seed:{name:t.name,goal:t.goal,diet_type:t.diet_type,weeks:t.weeks,instructions:t.instructions||"",meals:(t.meals||[]).map(m=>({name:m.name,time:m.time,items:(m.items||[]).map(toItem)}))}})}
+async function planToTemplate(id){const j=await call("GET",`diet/plans/${id}/`);if(!j.ok)return fail(j);const p=j.plan;
+ dietEditor({mode:"template",seed:{name:p.name,goal:p.goal,diet_type:p.diet_type,weeks:"",instructions:p.version.instructions||"",meals:p.version.meals.map(m=>({name:m.name,time:m.time,items:m.items.map(toItem)}))}})}
+async function dietEditor(o){o=o||{};await loadFoods();let seed=o.seed,plan=o.planObj||null;
+ if(o.plan&&!plan){const j=await call("GET",`diet/plans/${o.plan}/`);if(!j.ok)return fail(j);plan=j.plan;seed={name:plan.name,goal:plan.goal,diet_type:plan.diet_type,start_date:plan.start_date,end_date:plan.end_date,review_date:plan.review_date,instructions:plan.version.instructions||"",meals:plan.version.meals.map(m=>({name:m.name,time:m.time,items:m.items.map(toItem)}))}}
+ const t=today(),wk=n=>{const d=new Date(t+"T00:00:00");d.setDate(d.getDate()+7*n);return isoD(d)};
+ seed=seed||{name:"",goal:V("dg")||"Weight Loss",diet_type:V("dt")||"Vegetarian",meals:[{name:"Breakfast",time:"08:00",items:[toItem({})]},{name:"Lunch",time:"13:30",items:[toItem({})]},{name:"Dinner",time:"20:30",items:[toItem({})]}]};
+ DE={mode:o.mode||"plan",plan,tid:o.tid||null,meals:JSON.parse(JSON.stringify(seed.meals||[]))};const tmpl=DE.mode==="template";
+ const title=tmpl?(DE.tid?"Edit template":"New template"):plan?`Edit plan · ${esc(plan.member.name)} ${chip(plan.status)}`:"New diet plan";
+ const goals=["Weight Loss","Muscle Gain","Maintenance","General Fitness"],dtypes=["Vegetarian","Eggetarian","Non-vegetarian","Vegan"];
+ modal(title,`<datalist id="foodlist">${FOODS.map(f=>`<option value="${esc(f.name)}">`).join("")}</datalist><datalist id="mealnames">${MEALNAMES.map(n=>`<option value="${n}">`).join("")}</datalist>
+  <div class="grid">${!tmpl&&!plan?`<div class="full"><label>Member *</label><div id="mp_de"></div><div id="de_rep"></div></div>`:""}
+   ${F("de_name",tmpl?"Template name *":"Plan name *",seed.name,{cls:"two",ph:"e.g. Weight Loss — Vegetarian (1600 kcal)"})}${F("de_goal","Goal",seed.goal||goals[0],{opts:goals.includes(seed.goal)||!seed.goal?goals:[seed.goal,...goals]})}${F("de_dt","Diet type",seed.diet_type||dtypes[0],{opts:dtypes.includes(seed.diet_type)||!seed.diet_type?dtypes:[seed.diet_type,...dtypes]})}
+   ${tmpl?F("de_weeks","Length (weeks)",seed.weeks||"",{im:"numeric"}):`${F("de_start","Start date",seed.start_date||t,{type:"date"})}${F("de_end","End date",seed.end_date||(seed.weeks?wk(seed.weeks):wk(4)),{type:"date"})}${F("de_review","Review on",seed.review_date||wk(2),{type:"date"})}`}</div>
+  <div class="sec" style="margin-top:18px">Meals</div><div id="de_meals"></div>
+  <div class="row"><button class="sm" onclick="deAddMeal()">+ Add meal</button><span class="muted" style="font-size:12px">Pick a food and enter the amount: calories, protein, carbs and fat fill in by themselves. For anything not in the food list, click “type values”. The note is what the member reads (e.g. “1 bowl (150 g)”).</span></div>
+  <div class="kpis" id="de_nut" style="margin:14px 0 0"></div>
+  <div class="grid" style="margin-top:12px">${F("de_instr","Instructions for the member",seed.instructions||"",{ta:1,ph:"e.g. 3-4 litres of water a day. No sugar in tea."})}${plan&&plan.status!=="Draft"?F("de_note","What changed? (saved with the new version)","",{cls:"full",ph:"e.g. Swapped rice for millet"}):""}</div><div class="msg" id="demsg"></div>`,
+  tmpl?`<button onclick="closeModal()">Cancel</button><button class="pr" onclick="deSave()">Save template</button>`
+   :plan?`<button onclick="closeModal()">Cancel</button>${plan.status==="Draft"?`<button onclick="deSave()">Save draft</button><button class="pr" onclick="deSave('Active')">Save &amp; make active</button>`:`<button class="pr" onclick="deSave()">Save as version ${plan.current_version+1}</button>`}`
+   :`<button onclick="closeModal()">Cancel</button><button onclick="deSave('Draft')">Save as draft</button><button class="pr" onclick="deSave('Active')">Save &amp; give to member</button>`,1);
+ if(!tmpl&&!plan){mpInit("mp_de",{placeholder:"Search member (trainers: own clients only)",onPick:()=>deRep(),onClear:()=>deRep()});const m=o.member||mpGet("mp_diet");if(m)mpSet("mp_de",m);deRep()}
+ deRender()}
+function deRender(){$("de_meals").innerHTML=DE.meals.map((m,i)=>`<div class="meal" style="margin-top:10px">
+  <div class="row" style="margin:0"><input value="${esc(m.name)}" list="mealnames" placeholder="Meal name" style="flex:1;min-width:160px;font-weight:600" oninput="DE.meals[${i}].name=this.value;deCalc()"><input type="time" value="${esc(m.time||"")}" style="width:120px" oninput="DE.meals[${i}].time=this.value">
+   <button class="sm ghost" title="Move up" onclick="deMove(${i},-1)" ${i?"":"disabled"}>↑</button><button class="sm ghost" title="Remove meal" onclick="DE.meals.splice(${i},1);deRender()">Remove meal</button></div>
+  <div class="rep-tbl"><table class="de-t" style="margin-top:8px"><thead><tr><th style="min-width:180px">Food</th><th style="width:76px">Amount</th><th style="width:92px">Unit</th><th style="min-width:130px">Note for member</th>${NUTR.map(([k,l,u])=>`<th class="num" style="width:66px">${l}${u?` (${u})`:""}</th>`).join("")}<th style="width:32px"></th></tr></thead><tbody>
+  ${m.items.map((it,j)=>`<tr><td><input id="de_f${i}_${j}" value="${esc(it.food_name)}" list="foodlist" placeholder="Start typing, e.g. Poha" oninput="DE.meals[${i}].items[${j}].food_name=this.value;deCalc()" onchange="deFoodPicked(${i},${j})"><div class="de-h" id="de_h${i}_${j}"></div></td>
+   <td><input id="de_q${i}_${j}" value="${esc(it.quantity)}" inputmode="decimal" oninput="DE.meals[${i}].items[${j}].quantity=this.value;deCalc()"></td>
+   <td><select id="de_u${i}_${j}" onchange="DE.meals[${i}].items[${j}].unit=this.value;deCalc()">${DUNITS.map(u=>`<option value="${u}" ${u===(it.unit||"")?"selected":""}>${u||"—"}</option>`).join("")}${it.unit&&!DUNITS.includes(it.unit)?`<option selected>${esc(it.unit)}</option>`:""}</select></td>
+   <td><input value="${esc(it.portion)}" placeholder="e.g. 1 bowl (150 g)" oninput="DE.meals[${i}].items[${j}].portion=this.value;deCalc()"></td>
+   ${NUTR.map(([k])=>it.manual?`<td><input class="de-n" value="${esc(it[k])}" inputmode="decimal" oninput="DE.meals[${i}].items[${j}].${k}=this.value;deCalc()"></td>`:`<td class="num de-v" id="de_${k}${i}_${j}">—</td>`).join("")}
+   <td><button class="sm ghost" title="Remove food" onclick="DE.meals[${i}].items.splice(${j},1);deRender()">×</button></td></tr>`).join("")}
+  </tbody><tfoot><tr class="de-tot"><td colspan=4>${esc(m.name||"Meal")} total</td>${NUTR.map(([k])=>`<td class="num" id="de_t${k}${i}">—</td>`).join("")}<td></td></tr></tfoot></table></div>
+  <button class="sm" style="margin-top:6px" onclick="DE.meals[${i}].items.push(toItem({}));deRender()">+ Add food</button></div>`).join("")||`<div class="empty"><b>No meals yet</b>Add the first meal.</div>`;deCalc()}
+function deFoodPicked(i,j){const it=DE.meals[i].items[j],f=findFood(it.food_name);if(!f)return;if(fnorm(it.food_name)!==fnorm(f.name)){it.food_name=f.name;$(`de_f${i}_${j}`).value=f.name}
+ if(it.quantity===""||it.quantity==null){it.quantity=String(f.serving_qty??"");it.unit=f.serving_unit||"";$(`de_q${i}_${j}`).value=it.quantity;const u=$(`de_u${i}_${j}`);if(![...u.options].some(o=>o.value===it.unit))u.insertAdjacentHTML("beforeend",`<option>${esc(it.unit)}</option>`);u.value=it.unit}deCalc()}
+function deManual(i,j,on){const it=DE.meals[i].items[j];it.manual=on;if(on){const c=(DE.calc&&DE.calc[`${i}_${j}`])||{};NUTR.forEach(([k])=>it[k]=c[k]??"")}deRender();if(on)setTimeout(()=>{const el=document.querySelector(`#de_meals .meal:nth-child(${i+1}) tbody tr:nth-child(${j+1}) .de-n`);if(el)el.focus()},50)}
+function deToLib(i,j){const it=DE.meals[i].items[j];FL_PREFILL={name:it.food_name,serving_qty:it.quantity||"100",serving_unit:it.unit||"g",kcal:it.manual?it.kcal:"",protein_g:it.manual?it.protein_g:"",carbs_g:it.manual?it.carbs_g:"",fat_g:it.manual?it.fat_g:""};foodLib()}
+function deAddMeal(){const used=DE.meals.map(m=>m.name);DE.meals.push({name:MEALNAMES.find(n=>!used.includes(n))||"Meal",time:"",items:[toItem({})]});deRender()}
+function deMove(i,d){const a=DE.meals,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];deRender()}
+const deMeals=()=>DE.meals.map(m=>({name:(m.name||"").trim(),time:m.time||null,items:m.items.filter(i=>(i.food_name||"").trim()).map(i=>{const o={food_name:i.food_name.trim(),quantity:i.quantity===""?null:i.quantity,unit:i.unit||null,portion:i.portion||null};if(i.manual){o.manual=true;NUTR.forEach(([k])=>o[k]=i[k]===""?null:i[k])}return o})}));
+const fmtN=(v,k)=>v==null?"—":k==="kcal"?Math.round(v):Math.round(v*10)/10;
+function deHint(c,f,it,i,j){const lib=canDietLib()?` · <a class="link" onclick="deToLib(${i},${j})">add to food list</a>`:"";
+ if(c.manual)return `<span class="muted">Typed by hand for this amount · <a class="link" onclick="deManual(${i},${j},false)">use food list</a></span>`;
+ if(!(it.food_name||"").trim())return "";
+ const typ=`<a class="link" onclick="deManual(${i},${j},true)">type values</a>`;
+ switch(c.status){case "ok":return `<span class="muted">${esc(f.name)}: ${f.serving_qty} ${esc(f.serving_unit)} = ${Math.round(f.kcal)} kcal${f.builtin?" · built-in list":" · your food list"}</span>`;
+  case "no_food":return `<span class="warn-t">Not in the food list: ${typ}${lib}</span>`;
+  case "no_quantity":return `<span class="warn-t">Enter an amount${f?` (food list: per ${f.serving_qty} ${esc(f.serving_unit)})`:""}</span>`;
+  case "unit_mismatch":return `<span class="warn-t">Food list is per ${f?`${f.serving_qty} ${esc(f.serving_unit)}`:"another unit"}: <a class="link" onclick="deSetUnit(${i},${j},'${f?esc(f.serving_unit):""}')">use ${f?esc(f.serving_unit):""}</a> or ${typ}</span>`;
+  default:return `<span class="warn-t">This food has no values yet: ${typ}${lib}</span>`}}
+function deSetUnit(i,j,u){const it=DE.meals[i].items[j];it.unit=u;const sel=$(`de_u${i}_${j}`);if(![...sel.options].some(o=>o.value===u))sel.insertAdjacentHTML("beforeend",`<option>${esc(u)}</option>`);sel.value=u;deCalc()}
+function deCalc(){deb("decalc",async()=>{if(!DE||!$("de_nut"))return;const meals=deMeals().filter(m=>m.name);if(!meals.some(m=>m.items.length)){$("de_nut").innerHTML=`<div class="muted" style="font-size:12.5px">Add foods to see calories, protein, carbs and fat for each food, each meal and the whole day.</div>`;return}
+ const j=await call("POST","diet/calculate/",{meals});if(!j.ok||!$("de_nut"))return;const n=j.nutrition;DE.calc={};
+ let mi=0;DE.meals.forEach((m,i)=>{if(!(m.name||"").trim())return;const r=n.meals[mi++];if(!r)return;let k=0;
+  NUTR.forEach(([key])=>{const el=$(`de_t${key}${i}`);if(el)el.textContent=r.items.length?fmtN(r.totals[key],key):"—"});
+  m.items.forEach((it,jx)=>{const h=$(`de_h${i}_${jx}`);if(!(it.food_name||"").trim()){if(h)h.innerHTML="";NUTR.forEach(([key])=>{const c=$(`de_${key}${i}_${jx}`);if(c)c.textContent="—"});return}
+   const row=r.items[k++];if(!row)return;DE.calc[`${i}_${jx}`]=row.calc;NUTR.forEach(([key])=>{const c=$(`de_${key}${i}_${jx}`);if(c)c.textContent=fmtN(row.calc[key],key)});if(h)h.innerHTML=deHint(row.calc,row.food,it,i,jx)})});
+ const d=n.day,cal=d.protein_g*4+d.carbs_g*4+d.fat_g*9||1,pc=v=>Math.round(v/cal*100);
+ $("de_nut").innerHTML=`<div class="kpi ac"><span>Calories / day</span><b>${fmtN(d.kcal,"kcal")}</b></div>`+[["protein_g","Protein",4,"var(--p)"],["carbs_g","Carbs",4,"var(--wn)"],["fat_g","Fat",9,"var(--dg)"]].map(([k,l,f,c])=>`<div class="kpi"><span>${l}</span><b>${fmtN(d[k],k)} g</b><span style="font-size:11.5px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:5px"></i>${pc(d[k]*f)}% of calories</span></div>`).join("")+
+  `<div style="grid-column:1/-1"><div style="display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--row)"><div style="width:${pc(d.protein_g*4)}%;background:var(--p)"></div><div style="width:${pc(d.carbs_g*4)}%;background:var(--wn)"></div><div style="width:${pc(d.fat_g*9)}%;background:var(--dg)"></div></div>
+  <div class="muted" style="font-size:12px;margin-top:6px">${n.complete?`All ${n.items} foods counted.`:`${n.counted} of ${n.items} foods counted. Fix the ones marked in orange to complete the totals.`}</div></div>`},300)}
+async function deRep(){const box=$("de_rep");if(!box)return;const m=mpGet("mp_de");box.innerHTML="";if(!m)return;const cur=await activeDiet(m.id);if(!cur.length||mpGet("mp_de")!==m&&mpGet("mp_de")?.id!==m.id)return;
+ box.innerHTML=`<label class="ck" style="margin-top:8px"><input type="checkbox" id="de_rp" checked> <span>Replace the current plan <b>“${esc(cur.map(p=>p.name).join("”, “"))}”</b> <span class="muted">(it's marked Completed when this plan is given)</span></span></label>`}
+async function deSave(status){const meals=deMeals();if(meals.some(m=>!m.name))return say("demsg","Every meal needs a name.");if(!meals.length)return say("demsg","Add at least one meal.");
+ const b={name:V("de_name"),goal:V("de_goal"),diet_type:V("de_dt"),instructions:$("de_instr").value,meals};let j;
+ if(DE.mode==="template"){b.weeks=V("de_weeks");if(DE.tid)b.id=DE.tid;j=await call("POST","diet/templates/",b);if(!j.ok)return say("demsg",err(j));closeModal();DTAB="t";loadStarters();return say("dietmsg",`Template “${j.template.name}” saved.`,true)}
+ Object.assign(b,{start_date:V("de_start")||null,end_date:V("de_end")||null,review_date:V("de_review")||null});
+ if(DE.plan){if($("de_note"))b.change_note=V("de_note");if(status)b.status=status;j=await call("POST",`diet/plans/${DE.plan.id}/`,b)}
+ else{const m=mpGet("mp_de");if(!m)return say("demsg","Pick the member first.");b.member_id=m.id;b.status=status||"Draft";if(b.status==="Active"&&$("de_rp")&&$("de_rp").checked)b.replace_active=true;j=await call("POST","diet/plans/",b)}
+ if(!j.ok)return say("demsg",err(j));closeModal();loadDiet();dietDetail(j.plan.id)}
+
+/* food library (owner / manager) */
+let FL_BACK=null;
+function deStash(){if(!DE||!$("de_meals"))return null;return {mode:DE.mode,tid:DE.tid,planObj:DE.plan,member:MP.mp_de?mpGet("mp_de"):null,
+ seed:{name:V("de_name"),goal:V("de_goal"),diet_type:V("de_dt"),weeks:V("de_weeks"),start_date:V("de_start"),end_date:V("de_end"),review_date:V("de_review"),instructions:$("de_instr").value,meals:DE.meals}}}
+function foodClose(){closeModal();const b=FL_BACK;FL_BACK=null;if(b)dietEditor(b)}
+let FL_PREFILL=null,FL_TAB="own";
+async function foodLib(){FL_BACK=deStash();FOODS=null;await loadFoods();const lib=canDietLib();
+ modal("Food list",`<p class="muted" style="margin-top:0">Values for one serving. Plans use these to work out calories, protein, carbs and fat. FitDesk has a built-in list of ${FOODS.filter(f=>f.builtin).length} common Indian foods (approximate, from standard food tables)${lib?"; add your own foods, or replace a built-in one with your gym's recipe":""}. Saved plans keep their numbers even if a food changes later.</p>
+  ${lib?`<div class="card" style="margin:0 0 12px;padding:14px;background:var(--surface2)"><h3 id="fl_title" style="margin-bottom:8px">Add a food</h3><div class="grid">${F("fl_name","Food *","",{cls:"two",ph:"e.g. Ragi dosa"})}${F("fl_qty","Serving amount *","100",{im:"decimal"})}${F("fl_unit","Serving unit","g",{opts:DUNITS.filter(Boolean)})}${F("fl_kcal","Calories (kcal)","",{im:"decimal"})}${F("fl_p","Protein (g)","",{im:"decimal"})}${F("fl_c","Carbs (g)","",{im:"decimal"})}${F("fl_f","Fat (g)","",{im:"decimal"})}
+   <div class="full"><label>Contains</label><div class="row" style="margin:0;gap:14px">${Object.entries(ALLERGEN_TAGS).map(([t,l])=>`<label style="display:flex;gap:6px;align-items:center;font-weight:500;color:var(--t1);margin:0"><input type="checkbox" class="fl_al" value="${t}" style="width:auto;height:auto">${esc(l)}</label>`).join("")}</div></div><input type="hidden" id="fl_id"></div>
+   <div class="row"><button class="pr" onclick="foodSave()">Save food</button><button class="ghost" onclick="foodEdit()">Clear</button><span class="muted" style="font-size:12px">Tip: protein × 4 + carbs × 4 + fat × 9 should be close to the calories.</span></div><div class="msg" id="flmsg"></div></div>`:""}
+  <div class="toolbar" style="margin:0 0 8px"><div class="tabs" style="margin:0"><button id="flt-own" onclick="FL_TAB='own';foodList()">Your foods</button><button id="flt-std" onclick="FL_TAB='std';foodList()">Built-in list</button></div><div class="search grow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="fl_q" placeholder="Search foods" oninput="foodList()"></div></div>
+  <div class="rep-tbl" style="max-height:340px;overflow-y:auto"><table><thead><tr><th>Food</th><th>Serving</th><th class="num">kcal</th><th class="num">Protein</th><th class="num">Carbs</th><th class="num">Fat</th><th></th></tr></thead><tbody id="fl_list"></tbody></table></div>`,`<button onclick="foodClose()">${FL_BACK?"Back to the plan":"Close"}</button>`,1);
+ if(!FOODS.some(f=>!f.builtin))FL_TAB="std";foodList();if(FL_PREFILL&&lib){foodEdit(null,FL_PREFILL);FL_PREFILL=null}}
+function foodList(){const q=fnorm(V("fl_q")),lib=canDietLib();$("flt-own").classList.toggle("on",FL_TAB==="own");$("flt-std").classList.toggle("on",FL_TAB==="std");
+ const rows=FOODS.filter(f=>(FL_TAB==="std")===!!f.builtin).filter(f=>!q||fnorm(f.name).includes(q)||(f.aliases||[]).some(a=>fnorm(a).includes(q)));
+ $("fl_list").innerHTML=rows.map(f=>`<tr><td><b>${esc(f.name)}</b>${f.allergens?` ${f.allergens.split("").filter(t=>ALLERGEN_TAGS[t]).map(t=>`<span class="chip" style="font-size:10px;padding:1px 6px">${esc(ALLERGEN_TAGS[t])}</span>`).join(" ")}`:""}${f.source_note&&f.builtin&&f.source_note.indexOf("Built-in")<0?`<br><span class="muted" style="font-size:11px">${esc(f.source_note)}</span>`:""}</td><td style="white-space:nowrap">${f.serving_qty??"—"} ${esc(f.serving_unit||"")}</td><td class="num">${f.kcal??"—"}</td><td class="num">${f.protein_g??"—"}</td><td class="num">${f.carbs_g??"—"}</td><td class="num">${f.fat_g??"—"}</td>
+  <td style="text-align:right">${lib?(f.builtin?`<button class="sm" title="Save a copy in your food list with your gym's own values" onclick="foodEdit('${f.id}')">Use own values</button>`:`<button class="sm" onclick="foodEdit(${f.id})">Edit</button>`):""}</td></tr>`).join("")
+  ||empty(7,FL_TAB==="own"?"No foods of your own yet":"Nothing found",FL_TAB==="own"?"The built-in list is used until you add your own. Add a food above, or pick one from the built-in list and press “Use own values”.":"")}
+function foodEdit(id,pre){const f=pre||FOODS.find(x=>String(x.id)===String(id))||{};const own=f.id&&!f.builtin;
+ [["fl_name","name"],["fl_qty","serving_qty"],["fl_kcal","kcal"],["fl_p","protein_g"],["fl_c","carbs_g"],["fl_f","fat_g"]].forEach(([e,k])=>$(e).value=f[k]??(e==="fl_qty"?"100":""));
+ $("fl_id").value=own?f.id:"";const u=$("fl_unit");if(f.serving_unit&&![...u.options].some(o=>o.value===f.serving_unit))u.insertAdjacentHTML("beforeend",`<option>${esc(f.serving_unit)}</option>`);u.value=f.serving_unit||"g";
+ document.querySelectorAll(".fl_al").forEach(c=>c.checked=(f.allergens||"").includes(c.value));
+ $("fl_title").textContent=own?`Edit ${f.name}`:f.builtin?`Your own values for ${f.name} (replaces the built-in one)`:pre?"Add this food":"Add a food";$("fl_name").focus()}
+async function foodSave(){const b={name:V("fl_name"),serving_qty:V("fl_qty"),serving_unit:V("fl_unit"),kcal:V("fl_kcal"),protein_g:V("fl_p"),carbs_g:V("fl_c"),fat_g:V("fl_f"),allergens:[...document.querySelectorAll(".fl_al:checked")].map(c=>c.value).join("")};if(V("fl_id"))b.id=+V("fl_id");
+ const j=await call("POST","diet/foods/",b);if(!j.ok)return say("flmsg",err(j));FOODS=null;await loadFoods();FL_TAB="own";foodList();foodEdit();say("flmsg",`Saved ${j.food.name}.`+(j.warning?` Check: ${j.warning}`:""),!j.warning)}
+/* ============================== LOGO ============================== */
+function logoCard(s){const own=can("settings","edit");setTimeout(()=>logoPreview(s.has_logo),0);
+ return `<div class="card"><h3>Gym logo</h3><div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+  <div id="logo-prev" style="width:120px;height:80px;border:1.5px dashed var(--bd2);border-radius:12px;display:grid;place-items:center;background:var(--surface2);overflow:hidden"><span class="muted" style="font-size:12px">No logo</span></div>
+  <div style="flex:1;min-width:240px"><p class="muted" style="margin:0 0 8px;font-size:12.5px">Shown at the top of every receipt (on screen, printed and PDF). PNG with a transparent background looks best. JPG and WEBP work too, up to 2 MB.</p>
+  ${own?`<div class="row" style="margin:0"><input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" style="max-width:280px;padding-top:6px"><button class="pr" onclick="logoUpload()">Upload logo</button>${s.has_logo?`<button class="dg" onclick="logoRemove()">Remove</button>`:""}</div>`:`<span class="muted" style="font-size:12px">Only the owner can change the logo.</span>`}<div class="msg" id="logomsg"></div></div></div></div>`}
+async function logoPreview(has){const el=$("logo-prev");if(!el||!has)return;try{const {blob}=await blobFetch("gym/logo.png?"+Date.now());el.innerHTML=`<img src="${URL.createObjectURL(blob)}" style="max-width:100%;max-height:100%;object-fit:contain">`}catch(e){}}
+async function logoUpload(){const f=$("logo-file").files[0];if(!f)return say("logomsg","Choose an image first.");const fd=new FormData();fd.append("logo",f);const j=await call("POST","gym/settings/logo/",null,fd);if(!j.ok)return say("logomsg",err(j));await loadSettings();say("logomsg","Logo saved. It now appears on receipts.",true);brandLogo()}
+async function logoRemove(){if(!confirm("Remove the logo from receipts?"))return;const j=await call("POST","gym/settings/logo/remove/",{});if(!j.ok)return say("logomsg",err(j));await loadSettings();brandLogo()}
+async function brandLogo(){const lg=document.querySelector(".brand .lg");try{const {blob}=await blobFetch("gym/logo.png?"+Date.now());lg.innerHTML=`<img src="${URL.createObjectURL(blob)}" style="width:100%;height:100%;object-fit:contain;border-radius:10px;background:#fff">`;lg.style.background="#fff"}catch(e){lg.textContent="F";lg.style.background=""}}
+
+initSig();who();
+</script>
+{% include "gym_core/_profiles.html" %}
+</body></html>

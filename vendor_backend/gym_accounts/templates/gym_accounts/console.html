@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FitDesk · Sign-in &amp; team</title>
+{% include "fitdesk_ui/theme.html" %}
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,sans-serif;background:var(--bg);color:var(--t1);font-size:13px}
+header{background:var(--surface);border-bottom:1px solid var(--bd);padding:14px 24px;display:flex;align-items:center;gap:10px}
+header b{font-size:16px}header .tag{background:var(--wnl);color:var(--wn-t);border-radius:99px;padding:2px 10px;font-size:11px;font-weight:600}
+main{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px 24px;max-width:1400px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:14px}
+.col>h2{margin:0;font-size:18px;display:flex;align-items:center;gap:8px}
+.col>h2 small{font-size:12px;color:var(--t2);font-weight:500}
+.card{background:var(--surface);border:1px solid var(--bd);border-radius:14px;padding:16px}
+.card h3{margin:0 0 4px;font-size:14px}.card p.hint{margin:0 0 10px;color:var(--t2);font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:3px}
+input,select{width:100%;height:36px;border:1px solid var(--bd2);border-radius:9px;padding:0 10px;font:inherit;background:var(--surface);color:var(--t1)}
+button{height:34px;border-radius:9px;border:1px solid var(--bd2);background:var(--surface);color:var(--t1);padding:0 14px;font:inherit;font-weight:600;cursor:pointer}
+button.pr{background:var(--p);border-color:var(--p);color:#fff}button.pr:hover{background:var(--pd)}
+button.dg{color:var(--dg-t);border-color:var(--dg)}button.sm{height:28px;padding:0 10px;font-size:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.chip{display:inline-block;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:600;background:var(--row);color:var(--t2)}
+.c-ok{background:var(--okl);color:var(--ok-t)}.c-wn{background:var(--wnl);color:var(--wn-t)}.c-dg{background:var(--dgl);color:var(--dg-t)}.c-p{background:var(--pl);color:var(--p-t)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kpi{background:var(--bg);border-radius:10px;padding:10px}.kpi b{font-size:18px;display:block}
+table{width:100%;border-collapse:collapse;font-size:12px}th{text-align:left;color:var(--t2);font-size:11px;padding:6px;border-bottom:1px solid var(--bd)}td{padding:7px 6px;border-bottom:1px solid var(--row)}
+.msg{margin-top:10px;padding:9px 11px;border-radius:9px;font-size:12px;display:none}.msg.show{display:block}
+.msg.ok{background:var(--okl);color:var(--ok-t)}.msg.err{background:var(--dgl);color:var(--dg-t)}
+.code{font-family:Consolas,monospace;font-size:20px;font-weight:700;letter-spacing:2px;color:var(--p-t)}
+.hidden{display:none}.perm{display:flex;flex-wrap:wrap;gap:5px}
+.log{max-height:220px;overflow:auto}
+.who{color:var(--t2);font-size:12px}
+</style></head><body>
+<header><b>FitDesk · Sign-in &amp; team</b><span class="tag">Local testing only · works only when DEBUG=True</span>
+<span class="who" style="margin-left:auto">Left = the owner's PC · Right = a staff member's device</span><a href="app/" style="text-decoration:none"><button class="pr">Open gym app →</button></a><button class="theme-btn" data-theme-btn onclick="fdToggleTheme()"></button></header>
+<main>
+
+<!-- ===================== OWNER ===================== -->
+<section class="col" id="owner">
+ <h2>Owner <small id="o-who">not signed in</small></h2>
+
+ <div class="card" id="o-auth">
+  <h3>Step 1 · Create the owner login (first time only)</h3>
+  <p class="hint">Get a setup code from Django admin → Gym staff &amp; access → Owner setup codes → Add, and copy the full code from the green message.<br>
+  <b>Owner already created (new PC or browser)?</b> Use a fresh setup code with the owner's <b>same mobile and password</b> and click Create owner. That approves this device.</p>
+  <div class="grid">
+   <div><label>Licence key</label><input id="o-key" placeholder="FDPX-XXXX-XXXX-XXXX"></div>
+   <div><label>Owner setup code</label><input id="o-code" placeholder="ABCDE-FGHJK"></div>
+   <div><label>Owner name</label><input id="o-name" value="Owner"></div>
+   <div><label>Mobile</label><input id="o-phone" value="9800000001"></div>
+   <div><label>Password</label><input id="o-pass" value="Strong-pass-2026"></div>
+  </div>
+  <div class="row"><button class="pr" onclick="ownerSetup()">Create owner</button>
+   <span class="who">Already created? </span><button onclick="ownerLogin()">Sign in with mobile + password</button></div>
+  <div class="msg" id="o-msg"></div>
+ </div>
+
+ <div class="hidden" id="o-app" style="display:none;flex-direction:column;gap:14px">
+  <div class="card">
+   <div style="display:flex;justify-content:space-between;align-items:center"><h3>Team &amp; Access</h3>
+    <div><button class="sm" onclick="refreshOwner()">Refresh</button> <button class="sm" onclick="signOut('o')">Sign out</button></div></div>
+   <div class="kpis" style="margin-top:10px">
+    <div class="kpi"><span class="who">Users</span><b id="k-users">–</b></div>
+    <div class="kpi"><span class="who">Devices</span><b id="k-devs">–</b></div>
+    <div class="kpi"><span class="who">Waiting for approval</span><b id="k-pend">–</b></div>
+   </div>
+  </div>
+
+  <div class="card">
+   <h3>Step 2 · Invite a staff member</h3>
+   <div class="grid">
+    <div><label>Name</label><input id="i-name" value="Priya"></div>
+    <div><label>Mobile</label><input id="i-phone" value="9900000530"></div>
+    <div><label>Role</label><select id="i-role"><option value="receptionist">Receptionist</option><option value="manager">Manager</option><option value="trainer">Trainer</option></select></div>
+    <div><label>Salaries &amp; payroll</label><select id="i-sal"><option value="none">Hidden</option><option value="view">Can see</option><option value="manage">Can see &amp; pay</option></select></div>
+    <div style="display:flex;align-items:flex-end;grid-column:1/-1"><button class="pr" onclick="invite()" style="width:100%">Send invite</button></div>
+   </div>
+   <p class="hint" style="margin:8px 0 0">Salaries &amp; payroll: <b>Hidden</b> = can't see anyone's salary. <b>Can see</b> = salaries, payroll and trainers' PT earnings. <b>Can see &amp; pay</b> = also set salaries, pay salary and give advances. You can change it later under People.</p>
+   <div class="msg" id="i-msg"></div>
+  </div>
+
+  <div class="card">
+   <h3>Devices</h3><p class="hint">Step 4 · Approve the staff member's device here.</p>
+   <table><thead><tr><th>Device</th><th>Used by</th><th>Status</th><th></th></tr></thead><tbody id="t-devs"></tbody></table>
+   <div class="msg" id="d-msg"></div>
+  </div>
+
+  <div class="card">
+   <h3>People</h3>
+   <table><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Salaries</th><th></th></tr></thead><tbody id="t-users"></tbody></table>
+  </div>
+
+  <div class="card"><h3>Activity log</h3><div class="log"><table><tbody id="t-log"></tbody></table></div></div>
+ </div>
+</section>
+
+<!-- ===================== STAFF ===================== -->
+<section class="col" id="staff">
+ <h2>Staff member <small id="s-who">not signed in</small></h2>
+ <div class="card">
+  <h3>This device</h3>
+  <div class="grid">
+   <div><label>Device name</label><input id="s-devname" value="Reception PC"></div>
+   <div><label>Platform</label><select id="s-plat"><option>windows</option><option>macos</option><option>android</option><option>ios</option></select></div>
+  </div>
+  <div class="row"><span class="who" id="s-devid"></span><button class="sm" onclick="newStaffDevice()">Pretend this is a different device</button></div>
+ </div>
+
+ <div class="card">
+  <h3>Step 3 · Join with the invite code</h3>
+  <p class="hint">Use the code from <b>Send invite</b> on the left (format XXXX-XXXX), not the owner setup code.</p>
+  <div class="grid">
+   <div><label>Invite code</label><input id="s-code" placeholder="XXXX-XXXX"></div>
+   <div><label>Choose a password</label><input id="s-pass" value="Priya-pass-2026"></div>
+  </div>
+  <div class="row"><button class="pr" onclick="join()">Join gym</button></div>
+  <div class="msg" id="j-msg"></div>
+ </div>
+
+ <div class="card">
+  <h3>Step 5 · Sign in</h3>
+  <div class="grid">
+   <div><label>Mobile</label><input id="s-phone" value="9900000530"></div>
+   <div><label>Password</label><input id="s-lpass" value="Priya-pass-2026"></div>
+  </div>
+  <div class="row"><button class="pr" onclick="staffLogin()">Sign in</button><button onclick="deviceStatus()">Check approval status</button></div>
+  <div class="msg" id="l-msg"></div>
+ </div>
+
+ <div class="card hidden" id="s-app">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3>Signed in: what this person can do</h3><button class="sm" onclick="signOut('s')">Sign out</button></div>
+  <div id="s-perms" style="margin-top:8px"></div>
+  <p class="hint" style="margin-top:12px">Step 6 · Test the rules. These calls go to the server, which decides.</p>
+  <div class="row"><button onclick="staffNext()">Do my next action (open my profile)</button><button onclick="staffTeam()">Try the owner's Team screen</button></div>
+  <div class="msg" id="s-msg"></div>
+ </div>
+</section>
+</main>
+
+<script>
+const API = "/api/v1/";
+const $ = id => document.getElementById(id);
+function rnd(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("")}
+function store(k,v){try{v===undefined?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function load(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function devFor(who){let d=load(who+"_dev");if(!d){d={installation_id:who+"-"+rnd(6),device_secret:rnd(24)};store(who+"_dev",d)}return d}
+function ownerDevice(){return {...devFor("owner"),name:"Owner's PC",platform:"windows"}}
+function staffDevice(){return {...devFor("staff"),name:$("s-devname").value||"Staff device",platform:$("s-plat").value}}
+function newStaffDevice(){store("staff_dev");store("s_tok");$("s-app").classList.add("hidden");showDev();say("l-msg","New device created. It will need the owner's approval.",true)}
+function showDev(){$("s-devid").textContent="Device id: "+devFor("staff").installation_id}
+let O=load("o_tok"), S=load("s_tok");
+
+async function call(method,url,body,tok){
+  const r=await fetch(API+url,{method,headers:{"Content-Type":"application/json",...(tok?{Authorization:"Bearer "+tok}:{})},body:body?JSON.stringify(body):undefined});
+  let j={};try{j=await r.json()}catch(e){}
+  return {status:r.status,...j};
+}
+function say(id,text,ok){const m=$(id);m.textContent=text;m.className="msg show "+(ok?"ok":"err")}
+function errText(j){return `${j.message||"Error"}  [${j.status} · ${j.error}]`}
+const chip=(t,c)=>`<span class="chip ${c||""}">${t}</span>`;
+const statusChip=s=>({approved:chip("Approved","c-ok"),active:chip("Active","c-ok"),pending:chip("Waiting","c-wn"),rejected:chip("Rejected","c-dg"),removed:chip("Removed","c-dg"),disabled:chip("Disabled","c-dg")}[s]||chip(s));
+
+/* ---------- owner ---------- */
+async function ownerSetup(){
+  const j=await call("POST","auth/owner-setup/",{license_key:$("o-key").value.trim(),setup_code:$("o-code").value.trim(),name:$("o-name").value,phone:$("o-phone").value,password:$("o-pass").value,device:ownerDevice()});
+  if(!j.ok)return say("o-msg",errText(j));
+  O=j.access_token;store("o_tok",O);ownerReady(j.user);
+}
+async function ownerLogin(){
+  const j=await call("POST","auth/login/",{phone:$("o-phone").value,password:$("o-pass").value,device:ownerDevice()});
+  if(!j.ok)return say("o-msg",errText(j));
+  if(j.user.role!=="owner")return say("o-msg","That login isn't the owner.");
+  O=j.access_token;store("o_tok",O);ownerReady(j.user);
+}
+function ownerReady(u){$("o-auth").style.display="none";$("o-app").style.display="flex";$("o-who").textContent=u?`${u.name} · owner`:"signed in";refreshOwner()}
+async function refreshOwner(){
+  const s=await call("GET","team/summary/",null,O);
+  if(!s.ok){if(s.status===401){signOut("o");return say("o-msg","Owner session expired. Sign in again.")}return}
+  $("k-users").textContent=`${s.users.used} / ${s.users.limit}`;$("k-devs").textContent=`${s.devices.used} / ${s.devices.limit}`;$("k-pend").textContent=s.pending_devices;
+  const d=await call("GET","team/devices/",null,O);
+  $("t-devs").innerHTML=d.devices.map(x=>`<tr><td><b>${x.name}</b><br><span class="who">${x.platform}${x.shared?" · shared":""}</span></td><td>${x.registered_by?x.registered_by.name:"-"}</td><td>${statusChip(x.status)}</td><td style="text-align:right">${
+    x.status==="pending"?`<button class="sm" onclick="devAct(${x.id},'reject')">Reject</button> <button class="sm pr" onclick="devAct(${x.id},'approve')">Approve</button>`:
+    x.status==="approved"?`<button class="sm" onclick="devAct(${x.id},'set-shared',{shared:${!x.shared}})">${x.shared?"Make personal":"Make shared"}</button> <button class="sm dg" onclick="devAct(${x.id},'remove')">Remove</button>`:""}</td></tr>`).join("")||`<tr><td colspan=4 class="who">No devices</td></tr>`;
+  const u=await call("GET","team/users/",null,O);
+  $("t-users").innerHTML=u.users.map(x=>`<tr><td><b>${x.name}</b><br><span class="who">${x.phone}</span></td><td>${chip(x.role,"c-p")}</td><td>${statusChip(x.status)}</td><td>${x.role==="owner"?'<span class="who">Always</span>':`<select style="width:130px;height:30px;font-size:12px" onchange="salAccess(${x.id},this.value)">${'<option value="none">Hidden</option><option value="view">Can see</option><option value="manage">Can see &amp; pay</option>'.replace(`value="${x.salary_access}"`,`value="${x.salary_access}" selected`)}</select>`}</td><td style="text-align:right">${
+    x.role==="owner"?"":x.status==="active"?`<button class="sm dg" onclick="userAct(${x.id},'disable')">Disable</button>`:`<button class="sm" onclick="userAct(${x.id},'enable')">Enable</button>`}</td></tr>`).join("");
+  const a=await call("GET","team/activity/",null,O);
+  $("t-log").innerHTML=a.activity.map(x=>`<tr><td class="who">${new Date(x.at).toLocaleTimeString()}</td><td><b>${x.who||"-"}</b></td><td>${x.action.replace(/_/g," ")}</td><td class="who">${x.target}</td></tr>`).join("");
+}
+async function invite(){
+  const j=await call("POST","team/invites/",{name:$("i-name").value,phone:$("i-phone").value,role:$("i-role").value,salary_access:$("i-sal").value},O);
+  if(!j.ok)return say("i-msg",errText(j));
+  $("i-msg").className="msg show ok";$("i-msg").innerHTML=`Invite code: <span class="code">${j.invite_code}</span><br>Copied into the staff panel on the right →<br><span class="who">${j.share_text}</span>`;
+  $("s-code").value=j.invite_code;$("s-phone").value=$("i-phone").value;refreshOwner();
+}
+async function devAct(id,action,body){const j=await call("POST",`team/devices/${id}/${action}/`,body||{},O);if(!j.ok)say("d-msg",errText(j));else $("d-msg").className="msg";refreshOwner()}
+async function salAccess(id,access){const j=await call("POST",`team/users/${id}/salary-access/`,{access},O);if(!j.ok)alert(errText(j));refreshOwner()}
+async function userAct(id,action){await call("POST",`team/users/${id}/${action}/`,{},O);refreshOwner()}
+
+/* ---------- staff ---------- */
+async function join(){
+  const j=await call("POST","auth/join/",{invite_code:$("s-code").value,password:$("s-pass").value,device:staffDevice()});
+  if(!j.ok)return say("j-msg",errText(j));
+  $("s-lpass").value=$("s-pass").value;
+  say("j-msg",`Joined as ${j.user.role}. Device status: ${j.status==="device_pending"?"waiting for the owner's approval":"approved"}. Now approve it on the left (Devices), then sign in below.`,true);
+  if(O)refreshOwner();
+}
+async function staffLogin(){
+  const j=await call("POST","auth/login/",{phone:$("s-phone").value,password:$("s-lpass").value,device:staffDevice()});
+  if(!j.ok){$("s-app").classList.add("hidden");return say("l-msg",errText(j))}
+  S=j.access_token;store("s_tok",S);say("l-msg",`Signed in as ${j.user.name} (${j.user.role}) on ${j.device.name}.`,true);showPerms(j.user);if(O)refreshOwner();
+}
+function showPerms(u){
+  $("s-who").textContent=`${u.name} · ${u.role}`;$("s-app").classList.remove("hidden");
+  const p=u.permissions;
+  $("s-perms").innerHTML=`<div class="perm">${Object.entries(p).map(([m,a])=>a.length?chip(`${m}: ${a.join(", ")}`,"c-ok"):chip(`${m}: no access`,"")).join("")}</div>`;
+}
+async function deviceStatus(){const j=await call("POST","auth/device-status/",{device:staffDevice()});say("l-msg",j.ok?"This device: "+j.devices.map(d=>`${d.gym} → ${d.status}`).join(", "):errText(j),j.ok)}
+async function staffNext(){const j=await call("GET","me/",null,S);say("s-msg",j.ok?`Allowed. Server says you are ${j.user.name} (${j.user.role}).`:errText(j),j.ok)}
+async function staffTeam(){const j=await call("GET","team/summary/",null,S);say("s-msg",j.ok?"Allowed (only the owner should get this).":"Refused, as expected: "+errText(j),!j.ok)}
+
+function signOut(who){
+  if(who==="o"){if(O)call("POST","auth/logout/",{},O);O=null;store("o_tok");$("o-auth").style.display="";$("o-app").style.display="none";$("o-who").textContent="not signed in"}
+  else{if(S)call("POST","auth/logout/",{},S);S=null;store("s_tok");$("s-app").classList.add("hidden");$("s-who").textContent="not signed in"}
+}
+showDev();
+if(O)call("GET","me/",null,O).then(j=>j.ok&&j.user.role==="owner"?ownerReady(j.user):signOut("o"));
+if(S)call("GET","me/",null,S).then(j=>j.ok?showPerms(j.user):signOut("s"));
+</script>
+</body></html>

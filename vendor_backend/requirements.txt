@@ -1,9 +1,16 @@
-Django
-gunicorn
-whitenoise
-dj-database-url
-psycopg2-binary
-python-dotenv
-requests
-cryptography
+# Exact versions (Phase 1, 29 Oct 2026): a Render rebuild installs exactly
+# what was tested, never a surprise new major version. Upgrade on purpose,
+# test, then change the number here.
+Django==6.1.2
+gunicorn==26.2.0
+whitenoise==6.12.0
+dj-database-url==3.1.2
+psycopg2-binary==2.9.13
+python-dotenv==1.2.4
+requests==2.34.2
+cryptography==50.0.2
 boto3==1.43.108
+openpyxl==3.1.5
+reportlab==5.1.0
+Pillow==13.0.0
+django-storages[s3]==1.14.6

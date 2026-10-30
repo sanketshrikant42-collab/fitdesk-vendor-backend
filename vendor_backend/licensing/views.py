@@ -13,6 +13,7 @@ from .models import Client, License, SupportQuery, WhatsAppSendLog, WhatsAppConf
 from .notifications import send_telegram_notification
 from .phone_utils import validate_whatsapp_phone
 from .ratelimit import is_rate_limited
+from . import abuse
 from .license_utils import resolve_active_client_and_license
 from .whatsapp_provider import get_provider_for_client
 from .meta_signup import exchange_code_for_token, fetch_phone_number_details, SignupExchangeError
@@ -53,6 +54,9 @@ def validate_license(request):
     license_payload -- never device_status, and never anything from the
     legacy top-level fields above, for feature/entitlement decisions.
     """
+    if abuse.is_blocked("licence_ip", request):
+        return JsonResponse({"valid": False, "status": "rate_limited", "message": abuse.MESSAGE}, status=429)
+
     data = _json_body(request)
     key = (data.get("license_key") or "").strip()
     machine_id = (data.get("machine_id") or "").strip()
@@ -61,9 +65,17 @@ def validate_license(request):
     if not key:
         return JsonResponse({"valid": False, "status": "not_found", "message": "No license key provided."}, status=400)
 
+    # Every FitDesk Pro build sends machine_id (services/license_service.py
+    # and ui/license/activation.py). Without it a key could be checked, and
+    # a signed payload obtained, without binding any device (Phase 1 fix).
+    if not machine_id:
+        return JsonResponse({"valid": False, "status": "machine_id_required",
+                             "message": "This request didn't identify the computer. Please update FitDesk Pro."}, status=400)
+
     try:
         lic = License.objects.select_related("client", "plan").get(key=key)
     except License.DoesNotExist:
+        abuse.note_failure("licence_ip", request)
         return JsonResponse({"valid": False, "status": "not_found", "message": "License key not recognized."}, status=404)
 
     # ----------------------------------------
@@ -180,12 +192,15 @@ def activate_device(request):
     machine_id = (data.get("machine_id") or "").strip()
     device_name = (data.get("device_name") or "").strip()[:120]
 
+    if abuse.is_blocked("licence_ip", request):
+        return JsonResponse({"activated": False, "message": abuse.MESSAGE}, status=429)
     if not key or not machine_id:
         return JsonResponse({"activated": False, "message": "license_key and machine_id are required."}, status=400)
 
     try:
         lic = License.objects.select_related("client").get(key=key)
     except License.DoesNotExist:
+        abuse.note_failure("licence_ip", request)
         return JsonResponse({"activated": False, "message": "License key not recognized."}, status=404)
 
     if lic.effective_status != License.STATUS_ACTIVE:
@@ -227,12 +242,15 @@ def submit_query(request):
     subject = (data.get("subject") or "").strip()
     message = (data.get("message") or "").strip()
 
+    if abuse.is_blocked("support_ip", request):
+        return JsonResponse({"ok": False, "message": abuse.MESSAGE}, status=429)
     if not key or not subject or not message:
         return JsonResponse({"ok": False, "message": "license_key, subject and message are all required."}, status=400)
 
     try:
         lic = License.objects.select_related("client").get(key=key)
     except License.DoesNotExist:
+        abuse.note_failure("support_ip", request)
         return JsonResponse({"ok": False, "message": "License key not recognized."}, status=404)
 
     client = lic.client
@@ -283,6 +301,9 @@ def get_support_queries(request):
 
     license_key = request.GET.get("license_key", "").strip()
 
+    if abuse.is_blocked("support_ip", request):
+        return JsonResponse({"ok": False, "message": abuse.MESSAGE}, status=429)
+
     if not license_key:
         return JsonResponse(
             {
@@ -300,6 +321,7 @@ def get_support_queries(request):
         )
 
     except License.DoesNotExist:
+        abuse.note_failure("support_ip", request)
         return JsonResponse(
             {
                 "ok": False,

@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Receipt {{ r.receipt_no }}</title>
+<style>
+body{font-family:Inter,Segoe UI,Arial,sans-serif;color:#172033;margin:0;background:#F6F7FB}
+.r{max-width:620px;margin:24px auto;background:#fff;border:1px solid #E4E7EC;border-radius:14px;padding:28px}
+h1{margin:0;font-size:22px}.muted{color:#667085;font-size:12px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2px solid #6C5CE7;padding-bottom:14px;margin-bottom:16px}
+.brand{display:flex;gap:14px;align-items:flex-start}.brand img{max-height:64px;max-width:140px;object-fit:contain;border-radius:8px}
+.no{text-align:right;flex:none}.no b{font-size:16px;color:#5545D0}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}td{padding:6px 0;border-bottom:1px solid #F0F2F5}td.v{text-align:right;white-space:nowrap;padding-left:12px}
+tr.total td{font-weight:700;border-top:2px solid #172033;border-bottom:0}tr.muted td{color:#667085;font-size:12px}tr.bold td{font-weight:700}
+.chip{display:inline-block;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;background:#E8F8EF;color:#0B7A43}
+.chip.due{background:#FFF4E5;color:#B54708}.foot{margin-top:18px;font-size:11px;color:#667085;white-space:pre-line}
+.cancel{background:#FFF0EE;color:#C4320A;padding:8px 12px;border-radius:8px;font-weight:700;margin-bottom:12px}
+@media print{body{background:#fff}.r{border:0;margin:0}}
+</style></head><body><div class="r">
+{% if r.cancelled %}<div class="cancel">CANCELLED · {{ r.cancelled }}</div>{% endif %}
+<div class="top"><div class="brand">{% if r.logo %}<img src="{{ r.logo }}" alt="{{ r.gym.name }} logo">{% endif %}<div><h1>{{ r.gym.name }}</h1>
+{% if r.gym.tagline %}<div class="muted">{{ r.gym.tagline }}</div>{% endif %}{% for line in r.gym.address %}<div class="muted">{{ line }}</div>{% endfor %}
+{% if r.gym.contact %}<div class="muted">{{ r.gym.contact }}</div>{% endif %}{% if r.gym.gstin %}<div class="muted">GSTIN: {{ r.gym.gstin }}</div>{% endif %}</div></div>
+<div class="no"><div class="muted">Receipt</div><b>{{ r.receipt_no }}</b><div class="muted">{{ r.date }}</div>
+<div style="margin-top:6px"><span class="chip {% if not r.status_ok %}due{% endif %}">{{ r.status }}</span></div></div></div>
+<div><b>{{ r.member.name }}</b> <span class="muted">· {{ r.member.sub }}</span></div>
+{% if r.covers %}<div class="muted">Covers: {{ r.covers }}</div>{% endif %}
+<table>{% for row in r.rows %}<tr class="{{ row.style }}"><td>{{ row.label }}</td><td class="v">{{ row.value }}</td></tr>{% endfor %}</table>
+{% if r.upi %}<div class="muted" style="margin-top:10px">Pay the balance by UPI to <b>{{ r.upi }}</b></div>{% endif %}
+{% if r.footer or r.terms %}<div class="foot">{{ r.footer }}{% if r.footer and r.terms %}
+
+{% endif %}{{ r.terms }}</div>{% endif %}
+<div class="muted" style="margin-top:14px;text-align:center">Powered by FitDesk Pro</div>
+</div></body></html>

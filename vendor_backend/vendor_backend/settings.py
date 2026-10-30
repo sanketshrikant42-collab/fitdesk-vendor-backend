@@ -51,6 +51,28 @@ elif not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
+ON_RENDER = os.environ.get("RENDER", "").lower() == "true"
+
+# The browser test pages (/api/v1/test-console/...). Always on with DEBUG
+# (your PC); on a server only when ENABLE_TEST_CONSOLE=True (the staging
+# copy). Never set it on the live server.
+ENABLE_TEST_CONSOLE = DEBUG or os.environ.get("ENABLE_TEST_CONSOLE", "False") == "True"
+
+# --- HTTPS (Phase 1, 29 Oct 2026) -------------------------------------------
+# Render ends HTTPS at its proxy and passes X-Forwarded-Proto. On Render:
+# plain-http requests are redirected to https, cookies are only sent over
+# https, and browsers are told to always use https (HSTS). HSTS starts at
+# one day; raise SECURE_HSTS_SECONDS (e.g. 31536000) once all is well.
+if ON_RENDER:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "86400"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False      # *.onrender.com isn't ours
+    SECURE_REFERRER_POLICY = "same-origin"
+    SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]   # Render's own health check uses plain http
+
 ALLOWED_HOSTS = [
     h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h
 ] or ["localhost", "127.0.0.1"]
@@ -71,15 +93,36 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'licensing',
     'cloud_backup',
+    # Multi-user staff access for the new cross-platform apps (/api/v1/).
+    'gym_accounts',
+    # Gym data on the server: members, plans, billing, check-in (/api/v1/).
+    'gym_core',
+    # Staff, payroll, expenses, enquiries, diet, progress, consent (/api/v1/).
+    'gym_ops',
+    'gym_auto',
+    # Phase 4: one-off import of a gym from FitDesk v1.2.0 (manage.py import_v120).
+    'gym_import',
 ]
 
 # --- Support-query email notifications -------------------------------------
 # ADMINS receives an email every time a gym owner submits a query via
 # mail_admins() in licensing/views.py. Add your own name/email here.
-ADMINS = [
-    ('Admin', 'you@example.com'),
-]
-SERVER_EMAIL = 'noreply@fitdeskpro.local'
+# Phase 1 (29 Oct 2026): set ADMIN_EMAILS on Render, e.g. "you@gmail.com"
+# or "Sanket <you@gmail.com>, Other <x@y.com>". Blank = nobody is emailed
+# (before this it pointed at the placeholder you@example.com).
+def _admins(raw):
+    out = []
+    for part in [p.strip() for p in raw.split(",") if p.strip()]:
+        if "<" in part and part.endswith(">"):
+            name, addr = part[:-1].split("<", 1)
+            out.append((name.strip() or "Admin", addr.strip()))
+        else:
+            out.append(("Admin", part))
+    return out
+
+
+ADMINS = _admins(os.environ.get("ADMIN_EMAILS", ""))
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", 'noreply@fitdeskpro.local')
 # EMAIL_* settings below (further down this file) control how those emails
 # are sent. They default to the console backend, which just prints emails to
 # the terminal during development. Set the EMAIL_BACKEND env var to
@@ -90,8 +133,8 @@ SERVER_EMAIL = 'noreply@fitdeskpro.local'
 # Leave both blank to skip Telegram entirely (email above still works on
 # its own). See README.md "Instant phone alerts via Telegram" for how to
 # get these two values from @BotFather in about 5 minutes.
-TELEGRAM_BOT_TOKEN = ''   # e.g. '123456789:AAExampleTokenFromBotFather'
-TELEGRAM_CHAT_ID = ''     # e.g. '987654321'
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")   # e.g. '123456789:AAExampleTokenFromBotFather'
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")       # e.g. '987654321'
 
 # --- WhatsApp: per-gym Meta Cloud API (licensing/whatsapp_provider.py) --
 # IMPORTANT: there is deliberately NO global WhatsApp access token/phone
@@ -260,13 +303,46 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "/static/"
+
+# Uploaded files (progress photos). Never served publicly: the API streams
+# them only to signed-in staff of the same gym. In production this moves to
+# Cloudflare R2 (same bucket as cloud backups) before any gym uses photos.
+MEDIA_ROOT = BASE_DIR / "media"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Progress photos on Render (Phase 1): Render's disk is wiped on every
+# deploy, so with MEDIA_STORAGE=r2 photos go to Cloudflare R2 instead,
+# under media/ in the bucket (MEDIA_R2_BUCKET, default R2_BUCKET_NAME). The
+# backup code only ever deletes the exact backup keys it created, so the
+# two can share a bucket. Without it, photo upload is refused on Render
+# rather than silently lost (MEDIA_EPHEMERAL, checked in gym_ops).
+MEDIA_STORAGE = os.environ.get("MEDIA_STORAGE", "").lower()
+if MEDIA_STORAGE == "r2" and R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY:
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.environ.get("MEDIA_R2_BUCKET", R2_BUCKET_NAME),
+            "endpoint_url": R2_ENDPOINT or f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            "access_key": R2_ACCESS_KEY_ID,
+            "secret_key": R2_SECRET_ACCESS_KEY,
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            "location": "media",
+            "default_acl": None,
+            "file_overwrite": False,
+            "querystring_auth": True,
+        },
+    }
+    MEDIA_EPHEMERAL = False
+else:
+    MEDIA_EPHEMERAL = ON_RENDER
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
@@ -276,6 +352,7 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@fitdeskpro.local")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
 
 
