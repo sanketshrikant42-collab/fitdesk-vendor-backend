@@ -61,6 +61,13 @@ def dashboard(request):
     return ok({"dashboard": S.dashboard(request)})
 
 
+@endpoint("GET")
+@staff_required("dashboard", "view")
+def dashboard_insights(request):
+    """Chart data for the dashboard (money/enquiry parts follow the role)."""
+    return ok({"insights": S.dashboard_insights(request)})
+
+
 # --- plans --------------------------------------------------------------------------------
 
 @endpoint("GET", "POST")
@@ -183,7 +190,11 @@ def members(request):
         meta = {"page": page, "page_size": size, "total": len(rows), "has_next": page * size < len(rows)}
     else:
         items, meta = paginate(request, qs.prefetch_related("memberships__plan", "memberships__trainer", "memberships__freezes"))
-    return ok({"members": [S.member_json(m, on=on) for m in items], "pagination": meta})
+    rows = [S.member_json(m, on=on) for m in items]
+    if status == "dues":                       # the list of who owes money shows how much
+        for j, m in zip(rows, items):
+            j["dues"] = str(S.dues_for(m))
+    return ok({"members": rows, "pagination": meta})
 
 
 def _member(request, member_id, module="members"):

@@ -3,6 +3,7 @@
 <style>
 #pf-bg{position:fixed;inset:0;background:var(--overlay);z-index:50;display:none}#pf-bg.on{display:block}
 #fdp{position:fixed;top:0;right:0;bottom:0;width:min(760px,100vw);background:var(--bg);z-index:51;transform:translateX(100%);transition:transform .2s ease;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border-left:1px solid var(--bd)}
+#fdp:not(.on){box-shadow:none;visibility:hidden;transition:transform .2s ease,visibility 0s .2s}
 #fdp.on{transform:none}
 #fdp .pf-head{background:var(--surface);border-bottom:1px solid var(--bd);padding:16px 20px 0}
 #fdp .pf-top{display:flex;gap:14px;align-items:center}

@@ -21,6 +21,10 @@ from .models import (Bill, CheckIn, Counter, FitnessProfile, Freeze, GymSettings
 
 # --- small helpers ----------------------------------------------------------------
 
+def gym_tz(client):
+    return ZoneInfo(GymProfile.for_client(client).time_zone or "Asia/Kolkata")
+
+
 def today_for(client):
     """'Today' in the gym's own time zone (FIX: v1.2.0's server compared
     dates in UTC, so a licence ended at 05:30 IST)."""
@@ -915,3 +919,122 @@ def merge_members(request, dup, keep):
         keep.save()
     log(request, "member_merged", f"{label} → {keep.name} ({keep.code})", moved=moved)
     return keep, moved
+
+
+# --- dashboard charts (30 Oct 2026) -----------------------------------------------------------
+
+def _month_key(d):
+    return f"{d.year}-{d.month:02d}"
+
+
+def _months_back(on, n):
+    """The last n months as "YYYY-MM", oldest first, ending with on's month."""
+    y, m, out = on.year, on.month, []
+    for _ in range(n):
+        out.append(f"{y}-{m:02d}")
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    return out[::-1]
+
+
+def dashboard_insights(request):
+    """Everything the dashboard charts need, in one call, worked out in the
+    gym's time zone. Money and enquiry figures only for roles that may see
+    them (same rule as the reports)."""
+    from django.db.models import Count
+    client, user, on = request.client, request.staff, today_for(request.client)
+    tz = gym_tz(client)
+    members = scoped_members(user).filter(is_archived=False).prefetch_related("memberships__freezes", "memberships__plan")
+    out = {"date": on.isoformat()}
+
+    # member status: one state per member, as on the member list
+    status = {"active": 0, "expiring": 0, "frozen": 0, "upcoming": 0, "expired": 0, "no_plan": 0}
+    plan_mix, birthdays = {}, []
+    for m in members:
+        st = membership_state(m, on, memberships=list(m.memberships.all()))
+        key = st["state"]
+        if key == "active" and st["days_left"] is not None and st["days_left"] <= 7:
+            key = "expiring"
+        status[key] += 1
+        if st["state"] in ("active", "frozen") and st["membership"]:
+            name = st["membership"].plan.name
+            plan_mix[name] = plan_mix.get(name, 0) + 1
+        dob = m.date_of_birth
+        if dob and (dob.month, dob.day) == (on.month, on.day):
+            birthdays.append({"id": str(m.id), "name": m.name, "code": m.code, "phone": m.phone,
+                              "age": on.year - dob.year})
+    out["member_status"] = status
+    top = sorted(plan_mix.items(), key=lambda kv: -kv[1])
+    if len(top) > 5:
+        top = top[:5] + [("Other plans", sum(v for _, v in top[5:]))]
+    out["plan_mix"] = [{"plan": k, "members": v} for k, v in top]
+    out["birthdays_today"] = birthdays[:10]
+
+    # check-ins, last 14 days
+    since = on - timedelta(days=13)
+    counts = dict(CheckIn.objects.filter(client=client, local_date__gte=since, local_date__lte=on, member__in=members)
+                  .values_list("local_date").annotate(n=Count("id")).values_list("local_date", "n"))
+    out["checkins_14d"] = [{"date": (since + timedelta(days=i)).isoformat(),
+                            "count": counts.get(since + timedelta(days=i), 0)} for i in range(14)]
+
+    # new members vs renewals, last 6 months (by bill date in the gym's time zone)
+    months6 = _months_back(on, 6)
+    jr = {k: {"month": k, "new": 0, "renewal": 0} for k in months6}
+    first = date(int(months6[0][:4]), int(months6[0][5:]), 1)
+    for kind, created in (Bill.objects.filter(client=client, status=Bill.STATUS_ACTIVE, member__in=members,
+                                              created_at__date__gte=first - timedelta(days=1))
+                          .values_list("kind", "created_at")):
+        k = _month_key(timezone.localtime(created, tz).date())
+        if k in jr:
+            jr[k]["new" if kind == Bill.KIND_NEW else "renewal"] += 1
+    out["joins_6m"] = list(jr.values())
+
+    if has_perm(user, "billing", "view"):
+        pays = Payment.objects.filter(bill__client=client, bill__status=Bill.STATUS_ACTIVE)
+        d30 = on - timedelta(days=29)
+        daily = dict(pays.filter(paid_on__gte=d30, paid_on__lte=on).values_list("paid_on").annotate(s=Sum("amount"))
+                     .values_list("paid_on", "s"))
+        out["collections_30d"] = [{"date": (d30 + timedelta(days=i)).isoformat(),
+                                   "amount": str(R.money(daily.get(d30 + timedelta(days=i)) or 0))} for i in range(30)]
+        months12 = _months_back(on, 12)
+        m_first = date(int(months12[0][:4]), int(months12[0][5:]), 1)
+        monthly = {k: R.ZERO for k in months12}
+        for paid_on, amt in pays.filter(paid_on__gte=m_first, paid_on__lte=on).values_list("paid_on", "amount"):
+            monthly[_month_key(paid_on)] += amt
+        out["collections_12m"] = [{"month": k, "amount": str(R.money(v))} for k, v in monthly.items()]
+        month_start = on.replace(day=1)
+        modes = (pays.filter(paid_on__gte=month_start, paid_on__lte=on).values("mode").annotate(s=Sum("amount"))
+                 .order_by("-s"))
+        out["modes_this_month"] = [{"mode": x["mode"], "amount": str(R.money(x["s"]))} for x in modes]
+        # same days last month, for "vs last month"
+        prev_end = month_start - timedelta(days=1)
+        prev_start = prev_end.replace(day=1)
+        same_day = min(on.day, prev_end.day)
+        out["collected_this_month"] = str(R.money(pays.filter(paid_on__gte=month_start, paid_on__lte=on)
+                                          .aggregate(s=Sum("amount"))["s"] or 0))
+        out["collected_last_month_same_days"] = str(R.money(pays.filter(paid_on__gte=prev_start,
+                                                                paid_on__lte=prev_start.replace(day=same_day))
+                                                    .aggregate(s=Sum("amount"))["s"] or 0))
+        dues, due_members = R.ZERO, set()
+        for b in Bill.objects.filter(client=client, status=Bill.STATUS_ACTIVE).annotate(p=Sum("payments__amount")):
+            r = R.remaining(b.total, b.p or 0)
+            if r > 0:
+                dues += r
+                due_members.add(b.member_id)
+        out["dues"] = {"amount": str(R.money(dues)), "members": len(due_members)}
+        if has_perm(user, "expenses", "view"):
+            from gym_ops.models import Expense
+            exp = (Expense.objects.filter(client=client, is_deleted=False, date__gte=month_start, date__lte=on)
+                   .aggregate(s=Sum("amount"))["s"] or R.ZERO)
+            out["expenses_this_month"] = str(R.money(exp))
+
+    if has_perm(user, "enquiries", "view"):
+        from gym_ops.models import Enquiry
+        month_start = on.replace(day=1)
+        qs = Enquiry.objects.filter(client=client, is_archived=False, enquiry_date__gte=month_start, enquiry_date__lte=on)
+        by = dict(qs.values_list("status").annotate(n=Count("id")).values_list("status", "n"))
+        out["enquiries_this_month"] = {"total": sum(by.values()), "by_status": by,
+                                       "open_all": Enquiry.objects.filter(client=client, is_archived=False,
+                                                                          status__in=Enquiry.OPEN).count()}
+    return out

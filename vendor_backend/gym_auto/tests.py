@@ -599,3 +599,38 @@ class EmailTests(AutoBase):
         self.assertIn("app password", j["message"])
         from .models import EmailLog
         self.assertEqual(EmailLog.objects.get(client=self.gym).status, "failed")
+
+
+class DashboardInsightsTests(AutoBase):
+    def test_charts_data_and_role_limits(self):
+        a = self.joined("Asha Rao", 20)                     # active
+        self.joined("Bilal Khan", 3)                         # expiring within 7 days
+        self.joined("Chitra Iyer", -5)                       # expired
+        self.member(name="Dev Shah", date_of_birth=self.today.replace(year=1995).isoformat())  # no plan, birthday
+        CheckIn.objects.create(client=self.gym, member_id=a["id"], local_date=self.today)
+        s, j = self.req("GET", "dashboard/insights/", self.owner)
+        self.assertEqual(s, 200, j)
+        i = j["insights"]
+        self.assertEqual({k: v for k, v in i["member_status"].items() if v},
+                         {"active": 1, "expiring": 1, "expired": 1, "no_plan": 1})
+        self.assertEqual(i["plan_mix"], [{"plan": "Monthly", "members": 2}])
+        self.assertEqual([b["name"] for b in i["birthdays_today"]], ["Dev Shah"])
+        self.assertEqual((len(i["checkins_14d"]), i["checkins_14d"][-1]["count"]), (14, 1))
+        self.assertEqual(len(i["collections_30d"]), 30)
+        self.assertEqual(len(i["collections_12m"]), 12)
+        self.assertEqual(sum(int(x["new"]) for x in i["joins_6m"]), 3)
+        self.assertEqual(i["collected_this_month"], i["collections_12m"][-1]["amount"])
+        self.assertIn("dues", i)
+        self.assertIn("expenses_this_month", i)
+        self.assertIn("enquiries_this_month", i)
+        # a trainer sees member charts but no money and no enquiries
+        s, j = self.req("GET", "dashboard/insights/", self.tr)
+        self.assertEqual(s, 200, j)
+        for k in ("collections_30d", "dues", "modes_this_month", "expenses_this_month", "enquiries_this_month"):
+            self.assertNotIn(k, j["insights"])
+
+    def test_dues_list_shows_amount(self):
+        self.joined("Owes Money", 20, paid="1000")
+        s, j = self.req("GET", "members/?status=dues", self.owner)
+        self.assertEqual(s, 200, j)
+        self.assertEqual([(m["name"], m["dues"]) for m in j["members"]], [("Owes Money", "500.00")])

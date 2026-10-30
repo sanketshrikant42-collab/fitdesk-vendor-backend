@@ -8,6 +8,7 @@ urlpatterns = [
     path("gym/settings/logo/", views.gym_logo_upload),
     path("gym/settings/logo/remove/", views.gym_logo_remove),
     path("dashboard/", views.dashboard),
+    path("dashboard/insights/", views.dashboard_insights),
     path("plans/", views.plans),
     path("plans/<int:plan_id>/update/", views.plan_update),
     path("plans/<int:plan_id>/archive/", views.plan_archive),
