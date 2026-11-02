@@ -15,6 +15,7 @@ urlpatterns = [
     path("bills/<uuid:bill_id>/receipt.pdf", views.receipt_pdf),
     path("bills/<uuid:bill_id>/receipt-link/", views.receipt_link),
     path("receipts/<str:token>/<str:name>", views.receipt_shared),
+    path("r/<str:token>/<str:name>", views.receipt_member_shared),
     path("diet/plans/<int:plan_id>/pdf/", views.diet_pdf),
     path("diet/plans/<int:plan_id>/pdf-link/", views.diet_pdf_link),
     path("d/<str:token>/<str:name>", views.diet_pdf_shared),

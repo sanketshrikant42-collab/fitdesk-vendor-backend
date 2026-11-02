@@ -169,6 +169,7 @@ DEFAULT_WHATSAPP_RECEIPT = (
     "📅 Valid From: {joining_date}\n"
     "📅 Valid Until: {expiry_date}\n"
     "💰 Amount Paid: {amount_paid}\n\n"
+    "📄 Your receipt (PDF): {receipt_link}\n\n"
     "Thank you for choosing {gym_name}. We wish you a great fitness journey! 💪\n\n"
     "Regards,\n*{gym_name}*\n\n"
     "_Powered by FitDesk Pro 🚀_\n"

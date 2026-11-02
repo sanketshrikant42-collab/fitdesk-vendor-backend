@@ -287,7 +287,7 @@ def bills(request):
         if not has_perm(request.staff, "billing", "add"):
             raise ApiError(403, "permission_denied", "Your role can't create bills.", module="billing", action="add")
         b, created = S.create_bill(request, json_body(request))
-        return ok({"bill": S.bill_json(_bill_qs(request).get(pk=b.pk)), "created": created}, status=201 if created else 200)
+        return ok({"bill": S.bill_json(_bill_qs(request).get(pk=b.pk), base=S.public_base(request)), "created": created}, status=201 if created else 200)
     qs = _bill_qs(request)
     if request.GET.get("member_id"):
         qs = qs.filter(Q(member_id=request.GET["member_id"]) | Q(memberships__member_id=request.GET["member_id"])).distinct()
@@ -309,7 +309,7 @@ def bills(request):
 @staff_required("billing", "view")
 def bill_detail(request, bill_id):
     b = S.get_in_gym(Bill, request.client, bill_id, "Bill")
-    return ok({"bill": S.bill_json(_bill_qs(request).get(pk=b.pk))})
+    return ok({"bill": S.bill_json(_bill_qs(request).get(pk=b.pk), base=S.public_base(request))})
 
 
 @endpoint("POST")
@@ -317,7 +317,7 @@ def bill_detail(request, bill_id):
 def bill_payment(request, bill_id):
     b = S.get_in_gym(Bill, request.client, bill_id, "Bill")
     S.collect_payment(request, b, json_body(request))
-    return ok({"bill": S.bill_json(_bill_qs(request).get(pk=b.pk))})
+    return ok({"bill": S.bill_json(_bill_qs(request).get(pk=b.pk), base=S.public_base(request))})
 
 
 @endpoint("POST")
@@ -336,7 +336,7 @@ def bill_receipt(request, bill_id):
     """Printable receipt (HTML). The apps print it or save it as PDF."""
     from django.shortcuts import render
     b = S.get_in_gym(Bill, request.client, bill_id, "Bill")
-    data = S.bill_json(_bill_qs(request).get(pk=b.pk))
+    data = S.bill_json(_bill_qs(request).get(pk=b.pk), base=S.public_base(request))
     from .receipt import receipt_view
     return render(request, "gym_core/receipt.html", {"r": receipt_view(data, GymSettings.for_client(request.client))})
 

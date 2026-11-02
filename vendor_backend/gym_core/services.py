@@ -520,7 +520,33 @@ def save_fitness(request, member, data):
 
 # --- billing ------------------------------------------------------------------------------
 
-def bill_json(b, with_links=True):
+RECEIPT_MEMBER_SALT = "fitdesk-receipt-member"
+RECEIPT_MEMBER_LINK_DAYS = 60          # the receipt link sent to the member on WhatsApp
+
+
+def public_base(request):
+    """Address members' phones use to open links: PUBLIC_BASE_URL if set,
+    otherwise the address this request came in on."""
+    import os
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    if base:
+        return base
+    scheme = request.META.get("HTTP_X_FORWARDED_PROTO", request.scheme).split(",")[0].strip()
+    return f"{scheme}://{request.get_host()}"
+
+
+def receipt_member_link(b, base):
+    """Link the member gets on WhatsApp: downloads "RCPT00012 - Name.pdf",
+    works for 60 days without signing in, and stops if the bill is cancelled."""
+    import re
+    from urllib.parse import quote
+    from django.core import signing
+    token = signing.dumps({"b": str(b.id), "c": b.client_id}, salt=RECEIPT_MEMBER_SALT)
+    name = re.sub(r"\s+", " ", re.sub(r'[\\/:*?"<>|\r\n\t]+', " ", f"{b.receipt_no} - {b.member.name}")).strip()[:120] + ".pdf"
+    return f"{base}/api/v1/r/{token}/{quote(name)}"
+
+
+def bill_json(b, with_links=True, base=None):
     paid = sum((p.amount for p in b.payments.all()), R.ZERO)
     s = GymSettings.for_client(b.client)
     ms = list(b.memberships.select_related("member"))
@@ -547,9 +573,16 @@ def bill_json(b, with_links=True):
         ctx = {"gym_name": s.gym_name, "member_name": b.member.name, "receipt_no": b.receipt_no, "plan_name": b.plan.name,
                "joining_date": first.start_date.strftime("%d %b %Y") if first else "",
                "expiry_date": first.original_end_date.strftime("%d %b %Y") if first else "", "amount_paid": R.rupees(paid)}
-        msg = R.render_template(s.whatsapp_receipt_template or R.DEFAULT_WHATSAPP_RECEIPT, ctx)
+        template = s.whatsapp_receipt_template or R.DEFAULT_WHATSAPP_RECEIPT
+        link = receipt_member_link(b, base) if base and b.status == Bill.STATUS_ACTIVE else ""
+        if link and "{receipt_link}" not in template:          # a gym's own message gets the link at the end
+            template = template.rstrip() + "\n\n📄 Your receipt (PDF): {receipt_link}"
+        if not link:
+            template = "\n".join(l for l in template.split("\n") if "{receipt_link}" not in l)
+        ctx["receipt_link"] = link
+        msg = R.render_template(template, ctx)
         due = R.remaining(b.total, paid)
-        out["whatsapp"] = {"text": msg, "link": R.whatsapp_link(b.member.phone, msg)}
+        out["whatsapp"] = {"text": msg, "link": R.whatsapp_link(b.member.phone, msg), "receipt_link": link or None}
         out["upi"] = {"link": R.upi_link(s.upi_id, s.upi_payee_name or s.gym_name, due, f"{b.receipt_no} {b.member.name}"),
                       "amount": str(due), "upi_id": s.upi_id} if due > 0 and s.upi_id else None
     return out

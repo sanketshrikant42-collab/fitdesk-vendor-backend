@@ -220,6 +220,25 @@ def receipt_shared(request, token, name):
     return _pdf_response(b, download=request.GET.get("download") == "1")
 
 
+@endpoint("GET")
+def receipt_member_shared(request, token, name):
+    """The receipt link sent to the member on WhatsApp. Opens on any phone
+    without signing in and saves the PDF (add ?view=1 to show it instead)."""
+    from django.core import signing
+    from gym_accounts.api import require_active_licence
+    try:
+        data = signing.loads(token, salt=C.RECEIPT_MEMBER_SALT, max_age=C.RECEIPT_MEMBER_LINK_DAYS * 86400)
+    except signing.BadSignature:
+        raise ApiError(404, "link_expired", "This receipt link has expired. Ask your gym to send it again.")
+    b = Bill.objects.filter(pk=data.get("b"), client_id=data.get("c")).select_related("client", "member").first()
+    if b is None:
+        raise ApiError(404, "not_found", "Receipt not found.")
+    if b.status != Bill.STATUS_ACTIVE:
+        raise ApiError(410, "receipt_cancelled", "This receipt was cancelled. Please contact your gym.")
+    require_active_licence(b.client)
+    return _pdf_response(b, download=request.GET.get("view") != "1")
+
+
 # --- diet plan PDF -------------------------------------------------------------------------------------
 
 DIET_LINK_SALT = "fitdesk-diet-pdf"

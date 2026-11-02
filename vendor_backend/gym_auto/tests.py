@@ -634,3 +634,36 @@ class DashboardInsightsTests(AutoBase):
         s, j = self.req("GET", "members/?status=dues", self.owner)
         self.assertEqual(s, 200, j)
         self.assertEqual([(m["name"], m["dues"]) for m in j["members"]], [("Owes Money", "500.00")])
+
+
+class ReceiptMemberLinkTests(AutoBase):
+    def test_whatsapp_message_has_pdf_link_that_downloads(self):
+        from urllib.parse import unquote
+        from gym_core.models import Bill, GymSettings
+        m = self.member(name="Rohit Patil")
+        s, b = self.bill(self.rec, m["id"], self.monthly, amount_paid="1500")
+        self.assertEqual(s, 201, b)
+        link = b["bill"]["whatsapp"]["receipt_link"]
+        self.assertTrue(link.startswith("http://testserver/api/v1/r/"), link)
+        self.assertIn("📄 Your receipt (PDF): " + link, b["bill"]["whatsapp"]["text"])
+        self.assertTrue(unquote(link).endswith(f"{b['bill']['receipt_no']} - Rohit Patil.pdf"))
+        path = link.replace("http://testserver", "")
+        r = self.client.get(path)                                   # no sign-in needed
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertTrue(r["Content-Disposition"].startswith("attachment"))
+        self.assertTrue(self.client.get(path + "?view=1")["Content-Disposition"].startswith("inline"))
+        self.assertEqual(self.client.get(path.replace("/r/", "/r/x")).status_code, 404)   # tampered link
+        Bill.objects.filter(id=b["bill"]["id"]).update(status=Bill.STATUS_CANCELLED)
+        self.assertEqual(self.client.get(path).status_code, 410)
+
+    def test_own_message_gets_link_at_end_or_where_placed(self):
+        from gym_core.models import GymSettings
+        GymSettings.objects.filter(client=self.gym).update(whatsapp_receipt_template="Thanks {member_name}!")
+        m = self.member(name="Asha Rao")
+        s, b = self.bill(self.rec, m["id"], self.monthly, amount_paid="1500")
+        t = b["bill"]["whatsapp"]["text"]
+        self.assertTrue(t.startswith("Thanks Asha Rao!") and t.endswith(b["bill"]["whatsapp"]["receipt_link"]), t)
+        GymSettings.objects.filter(client=self.gym).update(whatsapp_receipt_template="PDF: {receipt_link}\nBye")
+        s, b = self.req("GET", f"bills/{b['bill']['id']}/", self.rec)
+        self.assertEqual(b["bill"]["whatsapp"]["text"], "PDF: " + b["bill"]["whatsapp"]["receipt_link"] + "\nBye")
