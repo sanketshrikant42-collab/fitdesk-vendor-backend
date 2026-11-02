@@ -102,6 +102,8 @@ INSTALLED_APPS = [
     'gym_auto',
     # Phase 4: one-off import of a gym from FitDesk v1.2.0 (manage.py import_v120).
     'gym_import',
+    # Nightly encrypted backup of the whole server database to R2 (manage.py backup_now).
+    'db_backup',
 ]
 
 # --- Support-query email notifications -------------------------------------
@@ -210,6 +212,18 @@ R2_OBJECT_PREFIX = os.environ.get("R2_OBJECT_PREFIX", "")
 # keys.py). Generate once, store in Render AND offline. LOSING IT MAKES
 # EXISTING CLOUD BACKUPS UNRESTORABLE ON NEW PCs -- never rotate casually.
 BACKUP_KEY_ENCRYPTION_KEY = os.environ.get("BACKUP_KEY_ENCRYPTION_KEY", "")
+
+# --- Server database backup (db_backup app) ---
+# SERVER_BACKUP_KEY encrypts every backup file. Make one with
+# `python manage.py backup_now --make-key`, store it in Render AND offline.
+# Losing it makes every server backup unreadable.
+SERVER_BACKUP_KEY = os.environ.get("SERVER_BACKUP_KEY", "")
+# auto = R2 when the R2_* variables are set, else a local folder (PC testing).
+SERVER_BACKUP_TARGET = os.environ.get("SERVER_BACKUP_TARGET", "auto")
+SERVER_BACKUP_DIR = os.environ.get("SERVER_BACKUP_DIR", str(BASE_DIR / "server_backups"))
+SERVER_BACKUP_KEEP_DAILY = int(os.environ.get("SERVER_BACKUP_KEEP_DAILY", "30"))
+SERVER_BACKUP_KEEP_MONTHLY = int(os.environ.get("SERVER_BACKUP_KEEP_MONTHLY", "12"))
+SERVER_BACKUP_KEEP_MANUAL = int(os.environ.get("SERVER_BACKUP_KEEP_MANUAL", "20"))
 
 CLOUD_BACKUP_RETENTION_DAILY = int(os.environ.get("CLOUD_BACKUP_RETENTION_DAILY", "30"))
 CLOUD_BACKUP_RETENTION_MANUAL = int(os.environ.get("CLOUD_BACKUP_RETENTION_MANUAL", "10"))

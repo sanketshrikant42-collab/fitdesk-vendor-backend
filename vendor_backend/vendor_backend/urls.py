@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/v1/', include('gym_core.urls')),
     path('api/v1/', include('gym_ops.urls')),
     path('api/v1/', include('gym_auto.urls')),
+    path('api/v1/', include('db_backup.urls')),
 
     # NOT under /api/ -- this is a browser-rendered HTML page (Meta's
     # Embedded Signup JS SDK needs a real web page context), opened by

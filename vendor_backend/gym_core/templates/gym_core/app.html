@@ -410,6 +410,9 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
  <section data-page="settings" class="hidden">
   <div class="ph"><div><h2>Gym settings</h2><p class="sub">Used on every device: receipts, GST, UPI, codes and payroll rules. Only the owner can change these.</p></div><button class="pr" onclick="saveSettings()">Save settings</button></div>
   <div class="msg" id="smsg"></div><div id="setbody"></div>
+  <div class="card hidden" id="dataexp"><h3>Your data</h3>
+   <p class="muted" style="margin-top:4px">Everything about your gym (members, bills, payments, check-ins, staff, payroll, expenses, enquiries, diet plans and more) in one Excel file you can keep. FitDesk also backs up the whole server every night, encrypted, and keeps 30 days plus one copy a month for a year.</p>
+   <div class="row"><button onclick="exportAll(this)">Download all my data (Excel)</button></div><div class="msg" id="dxmsg"></div></div>
  </section>
 
  <!-- SUPPORT -->
@@ -903,7 +906,8 @@ const SETS=[["Gym details",[["gym_name","Gym name"],["tagline","Tagline"],["phon
  ["Staff & payroll",[["holidays_paid","Pay staff for “Holiday” days","yn"]]],
  ["Referrals",[["referral_reward_days","Free days the referring member gets when their friend joins (0 = off)"]]],
  ["Messages & forms",[["whatsapp_receipt_template","WhatsApp receipt message (write {receipt_link} where the PDF link should go)",1],["enquiry_whatsapp_template","WhatsApp enquiry follow-up message",1],["consent_text","Consent form text (blank = default)",1]]]];
-async function loadSettings(){const j=await call("GET","gym/settings/");if(!j.ok)return denied($("setbody"),j);const s=j.settings;
+async function exportAll(btn){btn.disabled=true;const t=btn.textContent;btn.textContent="Preparing…";try{const {blob,name}=await blobFetch("data-export/");const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name||"fitdesk-all-data.xlsx";document.body.appendChild(a);a.click();a.remove();say("dxmsg","Downloaded. Keep the file somewhere safe: it has your members' details.",true)}catch(e){say("dxmsg",e.message)}btn.disabled=false;btn.textContent=t}
+async function loadSettings(){$("dataexp").classList.toggle("hidden",!(ME&&ME.role==="owner"));const j=await call("GET","gym/settings/");if(!j.ok)return denied($("setbody"),j);const s=j.settings;
  const NOTE={"Staff & payroll":`Who can see or pay salaries is chosen per person by the owner, in <a class="link" href="../">Sign-in, team &amp; devices</a> → People.`,"Receipts & GST":"The trainer's share choice applies to new bills; saved bills keep the share they were made with."};
  $("setbody").innerHTML=logoCard(s)+`<div class="card" id="emailcard"><h3>Email</h3><div class="muted">Loading…</div></div>`+SETS.map(([t,fs])=>`<div class="card"><h3>${t}</h3><div class="grid">${fs.map(([k,l,ty])=>ty==="yn"?F("s_"+k,l,s[k]?"1":"0",{opts:[["0","No"],["1","Yes"]]}):ty==="gst"?F("s_"+k,l,s[k]?"1":"0",{opts:[["1","Amount including GST"],["0","Amount before GST"]]}):F("s_"+k,l,s[k]??"",ty?{ta:1}:{})).join("")}${t==="Member & staff codes"?`<div><label>Codes will look like</label><input disabled value="Members ${esc(s.effective_member_code_prefix)}000001 · Staff ${esc(s.effective_member_code_prefix)}-S001 · Trainers ${esc(s.effective_member_code_prefix)}-T001"></div>`:""}</div>${NOTE[t]?`<p class="muted" style="margin:10px 0 0;font-size:12px">${NOTE[t]}</p>`:""}</div>`).join("")
  const rr=await call("GET","reminders/settings/");if(!rr.ok)return;const q=rr.settings;REMSET=q;const yn=k=>F("r_"+k,{renewal_on:"Renewal reminders",dues_on:"Dues reminders",birthday_on:"Birthday wishes",inactive_on:"Not-visiting call list",owner_summary_on:"Owner's daily summary"}[k],q[k]?"1":"0",{opts:[["1","On"],["0","Off"]]});
