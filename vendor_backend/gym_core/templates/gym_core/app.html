@@ -273,7 +273,7 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
 
  <!-- NEW BILL -->
  <section data-page="bill" class="hidden">
-  <div class="ph"><div><h2>New bill / renewal</h2><p class="sub">The server works out dates, GST and the trainer's share, and gives the receipt number.</p></div></div>
+  <div class="ph"><div><h2>New bill / renewal</h2><p class="sub">Dates, GST, dues and the trainer's share are worked out for you, with the receipt number.</p></div></div>
   <div class="split"><div class="card">
    <div class="grid">
     <div class="full"><label>Member</label><div id="mp_bill"></div></div>
@@ -389,7 +389,7 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
 
  <!-- REMINDERS -->
  <section data-page="rem" class="hidden">
-  <div class="ph"><div><h2>Today's reminders</h2><p class="sub" id="rem-sub">Prepared every morning by the server. Tap “Send on WhatsApp”: it opens WhatsApp with the message ready, and marks it sent.</p></div>
+  <div class="ph"><div><h2>Today's reminders</h2><p class="sub" id="rem-sub">Prepared every morning. Tap “Send on WhatsApp”: it opens WhatsApp with the message ready, and marks it sent.</p></div>
    <div class="row" style="margin:0"><input type="date" id="rem-date" style="width:160px" onchange="loadRem()"><button onclick="runRem()" title="Safe to repeat: nothing is made twice">Check again now</button></div></div>
   <div class="tabs" id="rem-tabs"></div>
   <div class="toolbar"><select id="rem-st" style="width:160px" onchange="renderRem()"><option value="pending">Still to send</option><option value="">All</option><option value="sent">Sent / done</option><option value="skipped">Skipped</option></select><span class="grow"></span><span class="muted" id="rem-ran" style="font-size:12px"></span></div>
@@ -398,7 +398,7 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
 
  <!-- REPORTS -->
  <section data-page="rep" class="hidden">
-  <div class="ph"><div><h2>Reports</h2><p class="sub">Worked out on the server from live data. Download any report as Excel.</p></div><button class="pr" id="rep-xl" onclick="repExport()">Download Excel</button></div>
+  <div class="ph"><div><h2>Reports</h2><p class="sub">Always up to date. Download any report as Excel.</p></div><button class="pr" id="rep-xl" onclick="repExport()">Download Excel</button></div>
   <div class="tabs" id="rep-tabs"></div>
   <div class="card"><div class="toolbar" style="margin:0"><label style="margin:0">From</label><input type="date" id="rep-from" style="width:160px" onchange="loadRep()"><label style="margin:0">To</label><input type="date" id="rep-to" style="width:160px" onchange="loadRep()">
    <select id="rep-preset" style="width:170px" onchange="repPreset(this.value)"><option value="">Quick pick…</option><option value="today">Today</option><option value="month">This month</option><option value="last">Last month</option><option value="q">Last 3 months</option><option value="fy">This financial year (Apr–Mar)</option></select>
