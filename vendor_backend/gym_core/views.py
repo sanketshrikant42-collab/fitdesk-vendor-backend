@@ -408,6 +408,16 @@ def test_console(request):
     return redirect("/api/v1/test-console/app/")
 
 
+def app_page(request):
+    """The FitDesk Pro web app for gyms: sign-in, then the whole app.
+    Always available (not a test page). All data comes from /api/v1/
+    and every call is checked on the server."""
+    from django.shortcuts import render
+    resp = render(request, "gym_core/app.html", {"prod": True})
+    resp["Cache-Control"] = "no-cache"
+    return resp
+
+
 def test_app(request):
     """Local test app (gym + operations in one page, light/dark theme).
     Routed only when DEBUG=True."""

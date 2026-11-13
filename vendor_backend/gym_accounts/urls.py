@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     # Sign-in (no token)
     path("auth/owner-setup/", views.owner_setup),
+    path("auth/owner-reset/", views.owner_reset),
     path("auth/join/", views.join),
     path("auth/login/", views.login),
     path("auth/refresh/", views.refresh),

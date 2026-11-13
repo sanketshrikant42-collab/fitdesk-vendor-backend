@@ -396,3 +396,51 @@ class LegacyContractTests(Api):
         # Staff devices never consume the legacy desktop's licensing.Device slots.
         self.assertEqual(Device.objects.filter(license=lic).count(), 1)
         self.assertEqual(lic.max_devices, 1)
+
+
+class OwnerPasswordResetTests(Api):
+    def test_owner_resets_forgotten_password_with_licence_and_code(self):
+        c, lic = self.make_gym()
+        tok, dev, _ = self.setup_owner(c, lic)
+        new_dev = device("New laptop", "web")
+        _, code = OwnerSetupCode.issue(c)
+        # wrong mobile number is refused and the code is not used up
+        s, b = self.post("auth/owner-reset/", {"license_key": lic.key, "setup_code": code, "phone": "9811111111",
+                                               "password": "Brand-new-pass-1", "device": new_dev})
+        self.assertEqual((s, b["error"]), (400, "not_owner_phone"))
+        s, b = self.post("auth/owner-reset/", {"license_key": lic.key, "setup_code": code, "phone": "9800000001",
+                                               "password": "Brand-new-pass-1", "device": new_dev})
+        self.assertEqual(s, 200, b)
+        self.assertEqual(b["user"]["role"], "owner")
+        self.assertEqual(b["device"]["status"], "approved")
+        # the old password and old sessions no longer work; the new password does
+        self.assertEqual(self.get("me/", tok)[0], 401)
+        self.assertEqual(self.login("9800000001", dev)[0], 401)
+        self.assertEqual(self.login("9800000001", dev, password="Brand-new-pass-1")[0], 200)
+        # the code works once
+        s, b = self.post("auth/owner-reset/", {"license_key": lic.key, "setup_code": code, "phone": "9800000001",
+                                               "password": "Another-pass-22", "device": new_dev})
+        self.assertEqual((s, b["error"]), (400, "bad_setup_code"))
+        self.assertTrue(TeamActivity.objects.filter(client=c, action="owner_password_reset").exists())
+
+    def test_reset_needs_an_owner_and_the_right_gym(self):
+        c, lic = self.make_gym()
+        _, code = OwnerSetupCode.issue(c)
+        s, b = self.post("auth/owner-reset/", {"license_key": lic.key, "setup_code": code, "phone": "9800000001",
+                                               "password": "Brand-new-pass-1", "device": device()})
+        self.assertEqual((s, b["error"]), (404, "no_owner"))
+        c2, lic2 = self.make_gym("Other Gym")
+        self.setup_owner(c2, lic2, phone="9800000002")
+        s, b = self.post("auth/owner-reset/", {"license_key": lic2.key, "setup_code": code, "phone": "9800000002",
+                                               "password": "Brand-new-pass-1", "device": device()})
+        self.assertEqual((s, b["error"]), (400, "bad_setup_code"))
+
+
+class AppPageTests(Api):
+    def test_app_page_is_always_served(self):
+        r = self.client.get("/app/")
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        self.assertIn('id="auth"', html)
+        self.assertNotIn('id="as"', html)          # no test "acting as" switch
+        self.assertIn("Team & devices", html)

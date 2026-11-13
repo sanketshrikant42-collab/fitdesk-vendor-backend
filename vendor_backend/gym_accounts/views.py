@@ -18,6 +18,11 @@ def owner_setup(request):
 
 
 @endpoint("POST")
+def owner_reset(request):
+    return ok(S.owner_reset_password(json_body(request), client_ip(request)))
+
+
+@endpoint("POST")
 def join(request):
     return ok(S.accept_invite(json_body(request), client_ip(request)), status=201)
 

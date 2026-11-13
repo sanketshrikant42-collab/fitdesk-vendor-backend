@@ -194,7 +194,7 @@ def find_or_register_device(client, user, dev):
 def device_gate(device, user):
     if device.status == StaffDevice.STATUS_PENDING:
         raise ApiError(403, "device_pending", "Waiting for the gym owner to approve this device.",
-                       device=device_json(device))
+                       device=device_json(device), role=user.role)
     if device.status in (StaffDevice.STATUS_REJECTED, StaffDevice.STATUS_REMOVED):
         raise ApiError(403, "device_blocked", "This device isn't allowed for this gym. Ask the owner.",
                        device=device_json(device))
@@ -304,6 +304,55 @@ def _recover_owner_device(owner, setup, data, ip):
     note_attempt("setup_ip", ip, True)
     TeamActivity.record(owner.client, "owner_device_recovered", actor=owner, device=device, target=device.name)
     return signed_in_json(owner, device, session, access, refresh)
+
+def owner_reset_password(data, ip):
+    """Owner forgot their password. Crestline support issues a one-time
+    owner setup code (Django admin); with the gym's licence key, the
+    owner's own mobile number and that code, the owner sets a new
+    password. All their old sessions end and this device is approved."""
+    check_rate("setup_ip", ip)
+    key = str(data.get("license_key") or "").strip()
+    code = str(data.get("setup_code") or "").strip().upper().replace("-", "").replace(" ", "")
+    lic = License.objects.select_related("client").filter(key=key).first()
+    setup = OwnerSetupCode.objects.filter(code_hash=sha256(code)).first() if code else None
+    if lic is None or setup is None or setup.client_id != lic.client_id or not setup.is_usable:
+        note_attempt("setup_ip", ip, False)
+        raise ApiError(400, "bad_setup_code", "Licence key or reset code is wrong or expired. Ask Crestline support for a new code.")
+    client = lic.client
+    require_active_licence(client)
+    owner = StaffUser.objects.filter(client=client, role=ROLE_OWNER).first()
+    if owner is None:
+        raise ApiError(404, "no_owner", "This gym has no owner login yet. Use Set up your gym instead.")
+    if clean_phone(data.get("phone")) != owner.phone:
+        note_attempt("setup_ip", ip, False)
+        raise ApiError(400, "not_owner_phone", "That mobile number isn't the owner's login for this gym.")
+    if not owner.is_active:
+        raise ApiError(403, "user_disabled", "The owner login is disabled. Contact Crestline support.")
+    password = clean_password(data.get("password"))
+    dev = clean_device(data)
+    with transaction.atomic():
+        locked_profile(client)
+        setup = OwnerSetupCode.objects.select_for_update().get(pk=setup.pk)
+        if not setup.is_usable:
+            raise ApiError(400, "bad_setup_code", "This code has already been used.")
+        owner.set_password(password)
+        owner.must_change_password = False
+        owner.last_login_at = timezone.now()
+        owner.save(update_fields=["password_hash", "must_change_password", "last_login_at"])
+        StaffSession.revoke_all("password_reset", user=owner)
+        device = find_or_register_device(client, owner, dev)
+        if not device.usable_by(owner):
+            raise ApiError(409, "device_in_use", "This device belongs to another staff member.")
+        if not device.is_approved:
+            device.status, device.decided_by, device.decided_at = StaffDevice.STATUS_APPROVED, owner, timezone.now()
+            device.save(update_fields=["status", "decided_by", "decided_at"])
+        setup.used_at = timezone.now()
+        setup.save(update_fields=["used_at"])
+        session, access, refresh = StaffSession.start(owner, device)
+    note_attempt("setup_ip", ip, True)
+    TeamActivity.record(client, "owner_password_reset", actor=owner, device=device, target=owner.name)
+    return signed_in_json(owner, device, session, access, refresh)
+
 
 def accept_invite(data, ip):
     check_rate("invite_ip", ip)

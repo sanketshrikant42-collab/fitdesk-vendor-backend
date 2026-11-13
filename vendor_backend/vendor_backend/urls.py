@@ -20,6 +20,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 
 from licensing import views as licensing_views
+from gym_core import views as gym_core_views
 
 def healthz(request):
     """Render's health check (Phase 1): the app is up AND can reach its
@@ -45,6 +46,8 @@ urlpatterns = [
     # New cross-platform apps: staff sign-in, roles, devices (gym_accounts).
     # Versioned so the legacy /api/ routes above never change shape.
     path('api/v1/', include('gym_accounts.urls')),
+    # The FitDesk Pro web app for gyms (sign-in screens + the whole app).
+    path('app/', gym_core_views.app_page, name='fitdesk_app'),
     path('api/v1/', include('gym_core.urls')),
     path('api/v1/', include('gym_ops.urls')),
     path('api/v1/', include('gym_auto.urls')),

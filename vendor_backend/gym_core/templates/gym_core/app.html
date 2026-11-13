@@ -220,9 +220,8 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
 <div class="content">
  <div class="topbar">
   <div class="mlogo" id="mlogo">F</div>
-  <div><div class="tt" id="ptitle">Dashboard</div><div class="crumb" id="pcrumb">FitDesk Pro · test app</div></div>
+  <div><div class="tt" id="ptitle">Dashboard</div><div class="crumb" id="pcrumb">FitDesk Pro</div></div>
   <div class="sp"></div>
-  <select id="as" onchange="who()" title="Which signed-in person this page acts as"><option value="o_tok">Acting as: owner</option><option value="s_tok">Acting as: staff device</option></select>
   <button class="theme-btn" data-theme-btn onclick="fdToggleTheme()"></button>
   <div class="me" id="me"></div>
  </div>
@@ -432,8 +431,13 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
 /* ============================== CORE ============================== */
 const API="/api/v1/";const $=id=>document.getElementById(id);
 const esc=v=>v==null?"":String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const tok=()=>{try{return JSON.parse(localStorage.getItem($("as").value))}catch(e){return null}};
-async function call(m,u,b,form){const h=tok()?{Authorization:"Bearer "+tok()}:{};if(!form)h["Content-Type"]="application/json";let r;try{r=await fetch(API+u,{method:m,headers:h,body:form||(b?JSON.stringify(b):undefined)})}catch(e){return{ok:false,status:0,message:"Can't reach the server. Is it running?"}}let j={};try{j=await r.json()}catch(e){}return{status:r.status,...j}}
+const tok=()=>{const s=sess();return s?s.access:null};
+async function call(m,u,b,form,again){const t=tok(),h=t?{Authorization:"Bearer "+t}:{};if(!form)h["Content-Type"]="application/json";let r;
+ try{r=await fetch(API+u,{method:m,headers:h,body:form||(b?JSON.stringify(b):undefined)})}catch(e){return{ok:false,status:0,message:"Can't reach FitDesk Pro. Check the internet connection and try again."}}
+ let j={};try{j=await r.json()}catch(e){}
+ if(r.status===401&&j.error==="token_expired"&&!again&&await auRefresh())return call(m,u,b,form,1);   // 30-minute pass renewed quietly
+ if((r.status===401&&["session_ended","token_expired","not_signed_in"].includes(j.error)&&t)||(r.status===403&&["user_disabled","device_not_approved","licence_inactive"].includes(j.error))){clearSess();ME=null;auKicked(j)}
+ return{status:r.status,...j}}
 const err=j=>j.message||("Something went wrong ("+j.status+")");
 function say(id,t,ok){const m=$(id);if(!m)return;m.textContent=t;m.className="msg show "+(ok?"ok":"err");if(ok)setTimeout(()=>{if(m.textContent===t)m.className="msg"},5000)}
 function fail(j,id){say(id||"gmsg",err(j));return true}
@@ -465,20 +469,21 @@ const TITLE={};NAV.forEach(([g,it])=>it.forEach(([k,l])=>TITLE[k]=[l,g]));
 const svg=k=>`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${IC[k]}"/></svg>`;
 IC.pin="M12 17v5M9 10.76V6h6v4.76a2 2 0 0 0 1.11 1.79l1.78.9A2 2 0 0 1 19 15.24V17H5v-1.76a2 2 0 0 1 1.11-1.79l1.78-.9A2 2 0 0 0 9 10.76zM8 2h8";
 IC.more="M4 6h16M4 12h16M4 18h10";IC.plus="M12 5v14M5 12h14";
-$("nav").innerHTML=`<div class="brand"><div class="lg">F</div><div class="fade"><b id="bname">FitDesk Pro</b><small id="bsub">Gym management</small></div></div><div class="navscroll">`+
+function buildNav(){$("nav").innerHTML=`<div class="brand"><div class="lg">F</div><div class="fade"><b id="bname">FitDesk Pro</b><small id="bsub">Gym management</small></div></div><div class="navscroll">`+
  NAV.map(([g,it])=>(g?`<div class="ng"><span class="fade">${g}</span></div>`:"")+it.map(([k,l])=>`<a data-p="${k}" href="#${k}" title="${esc(l)}">${svg(k)}<span class="fade">${esc(l)}</span></a>`).join("")).join("")+
- `</div><div class="navfoot"><a href="../" title="Sign-in, team & devices">${svg("team")}<span class="fade">Sign-in, team &amp; devices</span></a><a id="pinbtn" onclick="pinNav()" title="Keep the menu open">${svg("pin")}<span class="fade" id="pinlbl">Keep menu open</span></a></div>`;
+ `</div><div class="navfoot"><a onclick="myAccount()" title="My account">${svg("acct")}<span class="fade">My account</span></a><a id="pinbtn" onclick="pinNav()" title="Keep the menu open">${svg("pin")}<span class="fade" id="pinlbl">Keep menu open</span></a></div>`;
+ try{if(localStorage.getItem("fd_pin"))pinNav(true)}catch(e){}if(ME){navPerms();brandLogo()}}
+IC.acct="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z";buildNav();
 /* sidebar pin (desktop) */
 function pinNav(v){const on=v===undefined?!$("app").classList.contains("pinned"):v;$("app").classList.toggle("pinned",on);$("pinbtn").classList.toggle("pin-on",on);$("pinlbl").textContent=on?"Let the menu fold away":"Keep menu open";try{localStorage.setItem("fd_pin",on?"1":"")}catch(e){}}
-try{if(localStorage.getItem("fd_pin"))pinNav(true)}catch(e){}
 /* phone: bottom tab bar + "More" sheet */
 const TABS=[["dash","Home"],["desk","Check-in"],["bill","New bill"],["members","Members"],["more","More"]];
 $("tabbar").innerHTML=TABS.map(([k,l])=>k==="more"?`<a href="javascript:void 0" data-t="more" onclick="sheet(true)">${svg("more")}<span>${l}</span></a>`
  :k==="bill"?`<a class="fab" data-t="bill" href="#bill"><span class="ic">${svg("plus")}</span><span>${l}</span></a>`:`<a data-t="${k}" href="#${k}">${svg(k)}<span>${l}</span></a>`).join("");
 function sheetHtml(){$("sheet").innerHTML=`<div class="grab"></div>`+NAV.filter(([g])=>g).map(([g,it])=>{const v=it.filter(([k])=>{const n=NEED[k];return !n||can(n[0],n[1])});
   return v.length?`<h4>${g}</h4><div class="sg">${v.map(([k,l])=>`<a data-p="${k}" href="#${k}"><span class="ic">${svg(k)}</span>${esc(l)}</a>`).join("")}</div>`:""}).join("")+
- `<h4>Account</h4><div class="sopts"><select onchange="$('as').value=this.value;who();sheet(false)"><option value="o_tok" ${$("as").value==="o_tok"?"selected":""}>Acting as: owner</option><option value="s_tok" ${$("as").value==="s_tok"?"selected":""}>Acting as: staff device</option></select>
-  <button onclick="fdToggleTheme();sheet(false)">Switch light / dark</button><a class="link" href="../">Sign-in, team &amp; devices</a></div>`}
+ `<h4>Account</h4><div class="sopts"><button onclick="sheet(false);myAccount()">My account${ME?" · "+esc(ME.name):""}</button>
+  <button onclick="fdToggleTheme();sheet(false)">Switch light / dark</button><button class="dg" onclick="sheet(false);auSignOut()">Sign out</button></div>`}
 function sheet(open){if(open)sheetHtml();document.body.classList.toggle("sheet-open",!!open)}
 /* phone tables: label every cell with its column name so rows can stack as cards */
 function stackTables(root){(root||document).querySelectorAll("main table:not(.keep)").forEach(t=>{const hs=[...t.querySelectorAll("thead th")].map(th=>th.textContent.trim());
@@ -494,9 +499,12 @@ function show(p){if(!LOAD[p])p="dash";document.querySelectorAll("#nav a[data-p],
  document.querySelectorAll("#tabbar a").forEach(a=>a.classList.toggle("on",a.dataset.t===p||(a.dataset.t==="more"&&!["dash","desk","bill","members"].includes(p))));sheet(false);document.querySelectorAll("section[data-page]").forEach(s=>s.classList.toggle("hidden",s.dataset.page!==p));
  $("ptitle").textContent=TITLE[p][0];$("pcrumb").textContent=(TITLE[p][1]?TITLE[p][1]+" · ":"")+(GYM?GYM.name:"FitDesk Pro");$("gmsg").className="msg";window.scrollTo(0,0);if(ME)LOAD[p]()}
 window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
-async function who(){const j=await call("GET","me/");if(!j.ok){ME=null;GYM=null;$("me").innerHTML=`<span class="chip c-dg">Not signed in</span>`;
-  document.querySelectorAll("section[data-page]").forEach(s=>s.classList.add("hidden"));$("gmsg").innerHTML=`<b>Not signed in.</b> Open <a class="link" href="../">Sign-in, team &amp; devices</a>, sign in there, then come back.`;$("gmsg").className="msg show err";return}
- ME=j.user;GYM=j.gym;navPerms();brandLogo();$("me").innerHTML=`<div class="av">${ini(ME.name)}</div><div class="nm2"><b>${esc(ME.name)}</b><br><span class="muted">${esc(ME.role)} · ${esc(GYM.name)}</span></div>`;$("hello").textContent=`${greet()}, ${ME.name.split(" ")[0]}`;show(location.hash.slice(1)||"dash")}
+async function who(){const j=await call("GET","me/");if(!j.ok){ME=null;GYM=null;if(!document.body.classList.contains("auth-on"))auShow("signin",j.status===0?{msg:esc(err(j))}:{});return}
+ if(j.user.must_change_password){ME=j.user;GYM=j.gym;return auShow("changepw",{forced:true})}
+ document.body.classList.remove("auth-on");
+ ME=j.user;GYM=j.gym;navPerms();brandLogo();$("me").innerHTML=`<div class="av">${ini(ME.name)}</div><div class="nm2"><b>${esc(ME.name)}</b><br><span class="muted">${esc(ME.role)} · ${esc(GYM.name)}</span></div>`;$("hello").textContent=`${greet()}, ${ME.name.split(" ")[0]}`;show(location.hash.slice(1)||"dash");
+ if(ME.role==="owner")call("GET","team/summary/").then(t=>{if(!t.ok)return;teamDot(t.pending_devices);if(t.pending_devices&&location.hash!=="#team")
+  {$("gmsg").innerHTML=`<b>${t.pending_devices} device${t.pending_devices>1?"s are":" is"} waiting for your approval.</b> <a class="link" href="#team">Review in Team &amp; devices</a>`;$("gmsg").className="msg show"}})}
 
 /* ============================== MODAL ============================== */
 function modal(title,body,foot,wide){$("md-t").innerHTML=title;$("md-b").innerHTML=body;$("md-f").innerHTML=foot||"";$("md-f").classList.toggle("hidden",!foot);$("md").classList.toggle("wide",!!wide);$("md-bg").classList.add("on");setTimeout(()=>{const f=$("md-b").querySelector("input:not([type=hidden]),select,textarea");if(f&&!f.closest("[data-nofocus]"))f.focus()},50)}
@@ -721,7 +729,7 @@ async function saveBill(){if(!mpGet("mp_bill"))return say("bmsg","Pick a member 
 function resetBill(){if(MP.mp_bill)mpClear("mp_bill");FAM=[];famRender();["bd","ba"].forEach(i=>$(i).value="0");$("br").value="";$("bs").value="";$("bout").innerHTML="";quote()}
 function billOut(b,el){$(el).innerHTML=`<div class="row"><button onclick="receipt('${b.id}')">Open receipt</button><button onclick="receiptPdf('${b.id}')">View PDF</button><button onclick="receiptPdf('${b.id}',1)">Download PDF</button><button onclick="emailDlg('receipt','${b.id}','${b.member.id}')">Send by email</button>${b.whatsapp?`<a class="link" target="_blank" href="${b.whatsapp.link}">Send on WhatsApp ↗</a>`:""}</div>${b.upi?`<div class="meal" style="margin-top:12px"><b>Collect ${rs(b.upi.amount)} by UPI</b> <span class="muted">to ${esc(b.upi.upi_id)}</span><div id="qr_${el}" style="margin:10px 0;background:#fff;padding:8px;border-radius:8px;width:max-content"></div><a class="link" href="${b.upi.link}">${esc(b.upi.link)}</a></div>`:""}`;if(b.upi&&window.QRCode)new QRCode($("qr_"+el),{text:b.upi.link,width:140,height:140})}
 async function startBill(idOrCode){let m=null;if(/^[0-9a-f-]{36}$/.test(idOrCode))m=await memberById(idOrCode);else m=await memberByCode(idOrCode);go("bill");setTimeout(async()=>{if(!MP.mp_bill)await loadBillPage();if(m)mpSet("mp_bill",m)},150)}
-async function blobFetch(url){const r=await fetch(API+url,{headers:{Authorization:"Bearer "+tok()}});if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw new Error(j.message||("Error "+r.status))}return {blob:await r.blob(),name:((r.headers.get("Content-Disposition")||"").match(/filename="([^"]+)"/)||[])[1]}}
+async function blobFetch(url){let r=await fetch(API+url,{headers:{Authorization:"Bearer "+tok()}});if(r.status===401&&await auRefresh())r=await fetch(API+url,{headers:{Authorization:"Bearer "+tok()}});if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw new Error(j.message||("Error "+r.status))}return {blob:await r.blob(),name:((r.headers.get("Content-Disposition")||"").match(/filename="([^"]+)"/)||[])[1]}}
 async function receiptPdf(id,download){const w=download?null:window.open("about:blank","_blank");const j=await call("GET",`bills/${id}/receipt-link/`);if(!j.ok){if(w)w.close();return say("gmsg",err(j))}
  if(download){const a=document.createElement("a");a.href=j.download_url;a.download=j.filename;document.body.appendChild(a);a.click();a.remove()}else if(w)w.location.href=location.origin+j.url;else location.href=j.url}
 async function receipt(id){const r=await fetch(API+`bills/${id}/receipt/`,{headers:{Authorization:"Bearer "+tok()}});const h=await r.text();const w=window.open("","_blank");w.document.write(h);w.document.close()}
@@ -908,7 +916,7 @@ const SETS=[["Gym details",[["gym_name","Gym name"],["tagline","Tagline"],["phon
  ["Messages & forms",[["whatsapp_receipt_template","WhatsApp receipt message (write {receipt_link} where the PDF link should go)",1],["enquiry_whatsapp_template","WhatsApp enquiry follow-up message",1],["consent_text","Consent form text (blank = default)",1]]]];
 async function exportAll(btn){btn.disabled=true;const t=btn.textContent;btn.textContent="Preparing…";try{const {blob,name}=await blobFetch("data-export/");const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name||"fitdesk-all-data.xlsx";document.body.appendChild(a);a.click();a.remove();say("dxmsg","Downloaded. Keep the file somewhere safe: it has your members' details.",true)}catch(e){say("dxmsg",e.message)}btn.disabled=false;btn.textContent=t}
 async function loadSettings(){$("dataexp").classList.toggle("hidden",!(ME&&ME.role==="owner"));const j=await call("GET","gym/settings/");if(!j.ok)return denied($("setbody"),j);const s=j.settings;
- const NOTE={"Staff & payroll":`Who can see or pay salaries is chosen per person by the owner, in <a class="link" href="../">Sign-in, team &amp; devices</a> → People.`,"Receipts & GST":"The trainer's share choice applies to new bills; saved bills keep the share they were made with."};
+ const NOTE={"Staff & payroll":`Who can see or pay salaries is chosen per person by the owner, in <a class="link" href="#team">Team &amp; devices</a> → People.`,"Receipts & GST":"The trainer's share choice applies to new bills; saved bills keep the share they were made with."};
  $("setbody").innerHTML=logoCard(s)+`<div class="card" id="emailcard"><h3>Email</h3><div class="muted">Loading…</div></div>`+SETS.map(([t,fs])=>`<div class="card"><h3>${t}</h3><div class="grid">${fs.map(([k,l,ty])=>ty==="yn"?F("s_"+k,l,s[k]?"1":"0",{opts:[["0","No"],["1","Yes"]]}):ty==="gst"?F("s_"+k,l,s[k]?"1":"0",{opts:[["1","Amount including GST"],["0","Amount before GST"]]}):F("s_"+k,l,s[k]??"",ty?{ta:1}:{})).join("")}${t==="Member & staff codes"?`<div><label>Codes will look like</label><input disabled value="Members ${esc(s.effective_member_code_prefix)}000001 · Staff ${esc(s.effective_member_code_prefix)}-S001 · Trainers ${esc(s.effective_member_code_prefix)}-T001"></div>`:""}</div>${NOTE[t]?`<p class="muted" style="margin:10px 0 0;font-size:12px">${NOTE[t]}</p>`:""}</div>`).join("")
  const rr=await call("GET","reminders/settings/");if(!rr.ok)return;const q=rr.settings;REMSET=q;const yn=k=>F("r_"+k,{renewal_on:"Renewal reminders",dues_on:"Dues reminders",birthday_on:"Birthday wishes",inactive_on:"Not-visiting call list",owner_summary_on:"Owner's daily summary"}[k],q[k]?"1":"0",{opts:[["1","On"],["0","Off"]]});
  emailCard();$("setbody").insertAdjacentHTML("beforeend",`<div class="card"><h3>Reminders &amp; daily list</h3><div class="grid">${yn("renewal_on")}${F("r_renewal_days","Renewal reminder days",q.renewal_days,{ph:"7,3,1,0,-3"})}${yn("dues_on")}${F("r_dues_every_days","Remind dues again after (days)",q.dues_every_days,{im:"numeric"})}${yn("birthday_on")}${yn("inactive_on")}${F("r_inactive_after_days","Call list after not visiting (days)",q.inactive_after_days,{im:"numeric"})}${yn("owner_summary_on")}${F("r_owner_summary_phone","Send owner's summary to",q.owner_summary_phone,{ph:q.owner_summary_phone_effective||"Owner's mobile"})}</div>
@@ -1170,7 +1178,8 @@ async function brandLogo(){const ls=[document.querySelector(".brand .lg"),$("mlo
  try{const {blob}=await blobFetch("gym/logo.png?"+Date.now());const u=URL.createObjectURL(blob);ls.forEach(lg=>{lg.innerHTML=`<img src="${u}" style="width:100%;height:100%;object-fit:contain;border-radius:10px;background:#fff">`;lg.style.background="#fff"})}
  catch(e){ls.forEach(lg=>{lg.textContent=(GYM&&GYM.name||"F")[0].toUpperCase();lg.style.background=""})}}
 
-initSig();who();
+initSig();
 </script>
 {% include "gym_core/_profiles.html" %}
+{% include "gym_core/_auth.html" %}
 </body></html>
