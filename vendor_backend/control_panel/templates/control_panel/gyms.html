@@ -1,0 +1,145 @@
+{% extends "control_panel/base.html" %}
+{% block title %}{% if sel %}{{ sel.gym_name }}{% else %}Gyms &amp; licences{% endif %}{% endblock %}
+{% block main %}
+<div class="head">
+ <div><h1>Gyms &amp; licences</h1><p class="sub">Every gym, its licence, devices and how it's doing. Click a gym to open it.</p></div>
+ <form method="get" action="/control/gyms/" style="display:flex;gap:8px;flex-wrap:wrap">
+  <input name="q" value="{{ q }}" placeholder="Search gym, owner, mobile, key" aria-label="Search gyms" style="width:260px">
+  <select name="f" aria-label="Filter" style="width:190px" onchange="this.form.submit()">
+   <option value="" {% if not f %}selected{% endif %}>All gyms</option>
+   <option value="soon" {% if f == 'soon' %}selected{% endif %}>Ending in 30 days</option>
+   <option value="problem" {% if f == 'problem' %}selected{% endif %}>Expired / suspended</option>
+   <option value="old" {% if f == 'old' %}selected{% endif %}>On v1.2.0</option>
+   <option value="new" {% if f == 'new' %}selected{% endif %}>On the new app</option>
+  </select>
+  <button class="btn" type="submit">Search</button>
+ </form>
+</div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+ <section class="card" style="flex:3 1 520px;min-width:0;padding:6px 10px;overflow-x:auto">
+  <table>
+   <thead><tr><th>Gym</th><th>App</th><th>Licence ends</th><th>Members</th><th>Last seen</th><th>Status</th></tr></thead>
+   <tbody>
+   {% for r in rows %}
+    <tr class="click {% if sel and sel.id == r.c.id %}sel{% endif %}" onclick="location='/control/gyms/{{ r.c.id }}/{% if q or f %}?q={{ q|urlencode }}&f={{ f }}{% endif %}'">
+     <td><a href="/control/gyms/{{ r.c.id }}/" style="color:inherit"><b>{{ r.c.gym_name }}</b></a><div class="small muted">{{ r.c.owner_name }}{% if r.c.city %} · {{ r.c.city }}{% endif %}</div></td>
+     <td>{{ r.app }}</td>
+     <td>{% if r.lic %}<span {% if r.soon %}style="color:#8A4A06;font-weight:600"{% elif r.status == 'expired' %}style="color:#9B1C1C;font-weight:600"{% endif %}>{{ r.lic.expiry_date|date:"j M Y" }}</span>{% if r.soon %}<div class="small" style="color:#8A4A06">{{ r.days_left }} day{{ r.days_left|pluralize }}</div>{% endif %}{% else %}—{% endif %}</td>
+     <td>{% if r.members is not None %}{{ r.members }}{% else %}<span class="muted">—</span>{% endif %}</td>
+     <td>{% if r.last_seen %}{{ r.last_seen|timesince }} ago{% else %}<span class="muted">never</span>{% endif %}</td>
+     <td><span class="chip {{ r.badge_cls }}">{{ r.badge }}</span></td>
+    </tr>
+   {% empty %}
+    <tr><td colspan="6" class="muted" style="padding:30px;text-align:center">No gyms match. <a href="/control/gyms/">Show all</a></td></tr>
+   {% endfor %}
+   </tbody>
+  </table>
+ </section>
+
+ {% if sel %}
+ <aside class="card" aria-label="{{ sel.gym_name }}" style="flex:2 1 400px;min-width:0;padding:20px">
+  {% if reveal and reveal.code %}
+  <div class="reveal">
+   <div class="small" style="color:#B3A9FF;font-weight:600">NEW OWNER SETUP CODE · shown only now</div>
+   <div class="code">{{ reveal.code }}</div>
+   <div class="small" style="color:#C9C6E6">Works once, for 7 days. Send it to the owner now; it can't be shown again.</div>
+   {% if wa_key %}<a class="btn pr" style="margin-top:12px" href="{{ wa_key }}" target="_blank" rel="noopener">Send to {{ sel.owner_name }} on WhatsApp</a>{% endif %}
+  </div>
+  {% endif %}
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+   <div><h2 style="font-size:19px">{{ sel.gym_name }}</h2><div class="small muted" style="margin-top:2px">Gym {{ sel.id }} · added {{ sel.created_at|date:"j M Y" }}</div></div>
+   {% if d.lic %}<span class="chip {% if d.lic.effective_status == 'active' %}{% if d.days_left <= 30 %}warn{% else %}ok{% endif %}{% else %}bad{% endif %}">{{ d.lic.effective_status|capfirst }}</span>{% endif %}
+  </div>
+
+  <div class="grid2" style="margin:16px 0">
+   <div class="box"><div class="small muted">Owner</div><b>{{ sel.owner_name }}</b><div class="small">{{ sel.phone }}{% if sel.email %} · {{ sel.email }}{% endif %}</div></div>
+   <div class="box"><div class="small muted">Plan</div><b>{% if d.lic.plan %}{{ d.lic.plan.name }}{% else %}Not set{% endif %}</b><div class="small">{{ d.lic.max_devices }} desktop PC{{ d.lic.max_devices|pluralize }} allowed</div></div>
+   <div class="box"><div class="small muted">Licence key</div>
+    {% if d.lic %}<b class="mono" style="font-size:13px" id="lk" data-key="{{ d.lic.key }}">FDPX-••••-••••-{{ d.lic.key|slice:"-4:" }}</b>
+    <div class="small"><a href="#" onclick="var e=document.getElementById('lk');e.textContent=e.dataset.key;navigator.clipboard&&navigator.clipboard.writeText(e.dataset.key);this.textContent='Copied';return false">Show &amp; copy</a></div>{% else %}—{% endif %}</div>
+   <div class="box"><div class="small muted">Valid until</div><b>{{ d.lic.expiry_date|date:"j M Y" }}</b><div class="small">{% if d.days_left >= 0 %}{{ d.days_left }} day{{ d.days_left|pluralize }} left{% else %}ended {{ d.days_left|stringformat:"d"|cut:"-" }} days ago{% endif %}</div></div>
+  </div>
+
+  {% if d.lic %}
+  <details class="act" id="renew" {% if request.GET.renew or d.days_left <= 30 %}open{% endif %}><summary>Renew licence</summary>
+   <form method="post" action="/control/gyms/{{ sel.id }}/renew/" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">{% csrf_token %}
+    <label class="f" style="flex:1 1 160px">Extend by<select name="months">{% for m in renew_months %}<option value="{{ m }}" {% if m == 12 %}selected{% endif %}>{% if m == 1 %}1 month{% elif m == 12 %}1 year{% elif m == 24 %}2 years{% else %}{{ m }} months{% endif %}</option>{% endfor %}</select></label>
+    <button class="btn pr" type="submit">Renew</button>
+   </form>
+   <p class="small muted" style="margin:8px 0 0">Counts from the current end date, so early renewal never loses days. Recording the payment comes with the Renewals &amp; money page.</p>
+  </details>
+  {% endif %}
+
+  <details class="act"><summary>Owner login &amp; setup code</summary>
+   <div class="small" style="display:grid;gap:6px;margin-bottom:10px">
+    {% for u in d.users %}<div style="display:flex;justify-content:space-between;gap:8px"><span>{{ u.name }} · {{ u.get_role_display }}{% if u.status != 'active' %} <span class="chip bad">off</span>{% endif %}</span><span class="muted">{% if u.last_login_at %}last in {{ u.last_login_at|timesince }} ago{% else %}never signed in{% endif %}</span></div>
+    {% empty %}<div class="muted">No one has a login on the new app yet.</div>{% endfor %}
+    {% for sc in d.setup_codes %}<div class="muted">Setup code …{{ sc.code_hint }} · {% if sc.used_at %}used {{ sc.used_at|date:"j M" }}{% elif sc.is_usable %}unused, valid till {{ sc.expires_at|date:"j M" }}{% else %}expired{% endif %}</div>{% endfor %}
+   </div>
+   <form method="post" action="/control/gyms/{{ sel.id }}/setup-code/">{% csrf_token %}<button class="btn" type="submit">Make a new owner setup code</button></form>
+   <p class="small muted" style="margin:8px 0 0">For a new owner login, or an owner locked out of their only device.</p>
+  </details>
+
+  <details class="act"><summary>Devices ({{ d.devices|length }} desktop · {{ d.app_devices|length }} new app)</summary>
+   <h3 style="margin-top:2px">Desktop v1.2.0 PCs</h3>
+   {% for dv in d.devices %}
+    <form method="post" action="/control/gyms/{{ sel.id }}/devices/{{ dv.id }}/" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #EEEDF5">{% csrf_token %}
+     <span class="small"><b>{{ dv.device_name|default:"Unnamed PC" }}</b> · {% if dv.last_seen_at %}seen {{ dv.last_seen_at|timesince }} ago{% else %}never seen{% endif %}</span>
+     {% if dv.status == 'active' %}<input type="hidden" name="to" value="blocked"><button class="btn sm danger" type="submit">Block</button>
+     {% else %}<input type="hidden" name="to" value="active"><span class="chip bad">Blocked</span> <button class="btn sm" type="submit">Allow</button>{% endif %}
+    </form>
+   {% empty %}<div class="small muted" style="margin-bottom:6px">None.</div>{% endfor %}
+   <h3 style="margin-top:12px">New app devices <span class="small muted" style="font-weight:400">(the owner approves these in Team &amp; devices)</span></h3>
+   {% for ad in d.app_devices %}<div class="small" style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #EEEDF5"><span><b>{{ ad.name }}</b>{% if ad.shared %} · shared{% endif %}</span><span class="muted">{{ ad.get_status_display }}{% if ad.last_seen_at %} · {{ ad.last_seen_at|timesince }} ago{% endif %}</span></div>
+   {% empty %}<div class="small muted">None.</div>{% endfor %}
+  </details>
+
+  {% if d.lic %}
+  <details class="act"><summary>Plan &amp; PC limit</summary>
+   <form method="post" action="/control/gyms/{{ sel.id }}/licence/" class="grid2" style="align-items:end">{% csrf_token %}
+    <label class="f">Plan<select name="plan">{% if not d.lic.plan %}<option value="">Not set</option>{% endif %}{% for p in plans %}<option value="{{ p.pk }}" {% if d.lic.plan_id == p.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
+    <label class="f">Desktop PCs allowed<input name="max_devices" type="number" min="1" max="20" value="{{ d.lic.max_devices }}"></label>
+    <div class="span2" style="display:flex;justify-content:flex-end"><button class="btn pr" type="submit">Save</button></div>
+   </form>
+   {% if d.features %}<p class="small muted" style="margin:8px 0 0">Includes: {{ d.features|join:", " }}</p>{% endif %}
+  </details>
+  {% endif %}
+
+  <details class="act"><summary>Edit gym details</summary>
+   <form method="post" action="/control/gyms/{{ sel.id }}/edit/" class="grid2">{% csrf_token %}
+    <label class="f span2">Gym name<input name="gym_name" value="{{ sel.gym_name }}" required></label>
+    <label class="f">Owner<input name="owner_name" value="{{ sel.owner_name }}" required></label>
+    <label class="f">Mobile<input name="phone" value="{{ sel.phone }}" required></label>
+    <label class="f">City<input name="city" value="{{ sel.city }}"></label>
+    <label class="f">Email<input name="email" type="email" value="{{ sel.email }}"></label>
+    <label class="f span2">Notes<textarea name="notes" rows="3">{{ sel.notes }}</textarea></label>
+    <div class="span2" style="display:flex;justify-content:flex-end"><button class="btn pr" type="submit">Save details</button></div>
+   </form>
+  </details>
+
+  {% if d.lic %}
+  <details class="act"><summary style="color:{% if d.lic.status == 'suspended' %}#157F3D{% else %}#C42B2B{% endif %}">{% if d.lic.status == 'suspended' %}Make licence active again{% else %}Suspend licence{% endif %}</summary>
+   <form method="post" action="/control/gyms/{{ sel.id }}/status/">{% csrf_token %}
+    <input type="hidden" name="to" value="{% if d.lic.status == 'suspended' %}active{% else %}suspended{% endif %}">
+    <p class="small muted" style="margin:0 0 8px">{% if d.lic.status == 'suspended' %}The gym's apps start working again straight away.{% else %}Locks the gym's apps (desktop and new app) until you make it active again. Their data stays safe.{% endif %} Type <b>{{ sel.gym_name }}</b> to confirm.</p>
+    <div style="display:flex;gap:8px"><input name="confirm" aria-label="Type the gym name to confirm" autocomplete="off"><button class="btn {% if d.lic.status == 'suspended' %}pr{% else %}danger{% endif %}" type="submit">{% if d.lic.status == 'suspended' %}Make active{% else %}Suspend{% endif %}</button></div>
+   </form>
+  </details>
+  {% endif %}
+
+  <h3 style="margin-top:18px">Backups &amp; support</h3>
+  <div class="small" style="display:grid;gap:5px">
+   {% for b in d.backups %}<div>Cloud backup {{ b.created_at|date:"j M, g:i a" }} · {{ b.get_status_display }}</div>{% empty %}<div class="muted">No cloud backups from the desktop app.</div>{% endfor %}
+   {% for sq in d.support %}<div><a href="/admin/licensing/supportquery/{{ sq.id }}/change/">“{{ sq.subject|truncatechars:50 }}”</a> · {{ sq.get_status_display }} · {{ sq.created_at|date:"j M" }}</div>{% endfor %}
+  </div>
+
+  <h3 style="margin-top:18px">History</h3>
+  <div class="small" style="display:grid;gap:6px">
+   {% for a in d.activity %}<div>{{ a.label }}{% if a.extra %} ({{ a.extra }}){% endif %} <span class="muted">· {{ a.at|date:"j M Y, g:i a" }}</span></div>{% empty %}<div class="muted">Nothing recorded yet.</div>{% endfor %}
+  </div>
+ </aside>
+ {% endif %}
+</div>
+{% endblock %}

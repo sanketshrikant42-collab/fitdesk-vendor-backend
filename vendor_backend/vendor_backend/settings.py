@@ -104,6 +104,8 @@ INSTALLED_APPS = [
     'gym_import',
     # Nightly encrypted backup of the whole server database to R2 (manage.py backup_now).
     'db_backup',
+    # Crestline control panel for the vendor (/control/), superuser only.
+    'control_panel',
 ]
 
 # --- Support-query email notifications -------------------------------------

@@ -41,6 +41,8 @@ urlpatterns = [
     path('', RedirectView.as_view(url='/app/', permanent=False)),
     path('healthz/', healthz),
     path('admin/', admin.site.urls),
+    # Crestline's own control panel (superuser only).
+    path('control/', include('control_panel.urls')),
     path('api/', include('licensing.urls')),
 
     # Cloud Backup module (cloud_backup app) -- same /api/ prefix and

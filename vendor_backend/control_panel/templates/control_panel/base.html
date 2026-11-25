@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Control panel{% endblock %} · Crestline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#F5F4FB;color:#1D1B33;font-size:14px}
+a{color:#4B3FD6;text-decoration:none}a:hover{color:#3A2FB8}
+.shell{display:flex;flex-wrap:wrap;min-height:100vh}
+.nav{flex:1 1 220px;max-width:240px;background:#14122B;padding:22px 14px;display:flex;flex-direction:column;gap:4px}
+.nav .brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px}
+.logo{width:36px;height:36px;border-radius:10px;background:#6D5DF6;color:#fff;display:grid;place-items:center;font-weight:700}
+.nav .brand b{color:#fff;display:block}.nav .brand small{color:#9E9BBF;font-size:12px}
+.nav a{color:#C9C6E6;padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
+.nav a:hover{color:#fff;background:#1F1C3D}.nav a.on{background:#2A2650;color:#fff;font-weight:600}
+.nav a.soon{color:#7C79A0}.nav a.soon:hover{background:none;color:#7C79A0;cursor:default}
+.nav .cnt{background:#C42B2B;color:#fff;border-radius:99px;font-size:11px;padding:1px 8px;font-weight:700}.nav .cnt.w{background:#B45309}
+.nav .add{background:#6D5DF6;color:#fff;justify-content:center;font-weight:600;margin-top:auto}.nav .add:hover{background:#5B4BE8}
+.nav form{margin:0}.nav .who{color:#9E9BBF;font-size:12px;padding:14px 8px 0;display:flex;justify-content:space-between;align-items:center}
+.nav .who button{background:none;border:0;color:#C9C6E6;font:inherit;font-size:12px;cursor:pointer;padding:0}
+main{flex:999 1 560px;min-width:0;padding:28px 32px 48px}
+h1{margin:0;font-size:26px}h2{margin:0;font-size:16px}h3{margin:0 0 8px;font-size:14px}
+.sub{margin:4px 0 0;color:#5F5C78}.muted{color:#5F5C78}.small{font-size:12.5px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.card{background:#fff;border:1px solid #E2E0EE;border-radius:14px;padding:18px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.kpi .l{color:#5F5C78;font-size:12.5px;font-weight:600}.kpi .v{font-size:28px;font-weight:700;margin-top:6px}
+.kpi.warn{background:#FFF7EC;border-color:#F3C98B}.kpi.warn .l,.kpi.warn .s{color:#8A4A06}
+.kpi.bad{background:#FDF0F0;border-color:#F1B5B5}.kpi.bad .l,.kpi.bad .s{color:#9B1C1C}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:1px solid #E2E0EE;background:#fff;color:#1D1B33;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#BDB8DA;color:#1D1B33}.btn.pr{background:#6D5DF6;border-color:#6D5DF6;color:#fff}.btn.pr:hover{background:#5B4BE8}
+.btn.danger{color:#C42B2B;border-color:#F1B5B5}.btn.sm{height:32px;padding:0 10px;font-size:13px}
+input,select,textarea{font:inherit;color:#1D1B33;border:1px solid #E2E0EE;border-radius:10px;padding:0 12px;height:40px;background:#fff;width:100%}
+textarea{padding:10px 12px;height:auto}
+input:focus,select:focus,textarea:focus{outline:2px solid #B3A9FF;border-color:#6D5DF6}
+label.f{display:grid;gap:5px;font-size:12.5px;font-weight:600}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.span2{grid-column:span 2}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:#5F5C78;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:10px 8px;font-weight:600}
+td{padding:11px 8px;border-top:1px solid #EEEDF5;vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:#FAF9FE}tr.sel td{background:#F3F1FE}
+.chip{display:inline-block;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.ok{background:#E4F5EA;color:#157F3D}.chip.warn{background:#FFF1DC;color:#8A4A06}.chip.bad{background:#FDE3E3;color:#9B1C1C}.chip.info{background:#EDEAFE;color:#4B3FD6}
+.msg{border-radius:12px;padding:12px 14px;margin-bottom:16px;font-weight:500}
+.msg.success{background:#E4F5EA;color:#14532D}.msg.error{background:#FDE3E3;color:#7F1D1D}
+.todo{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #EEEDF5;flex-wrap:wrap}.todo:first-of-type{border-top:0}
+.ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none}
+.ic.warn{background:#FFF1DC;color:#B45309}.ic.bad{background:#FDE3E3;color:#C42B2B}.ic.info{background:#EDEAFE;color:#4B3FD6}.ic.ok{background:#E4F5EA;color:#157F3D}
+.todo .tx{flex:1;min-width:220px}
+.box{background:#F7F6FC;border-radius:10px;padding:10px 12px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.reveal{background:#14122B;color:#fff;border-radius:14px;padding:18px;margin-bottom:16px}
+.reveal .code{font-family:ui-monospace,monospace;font-size:22px;font-weight:700;letter-spacing:.06em;margin:4px 0}
+details.act{border:1px solid #E2E0EE;border-radius:12px;padding:0 14px;margin-top:10px}
+details.act summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none;display:flex;justify-content:space-between}
+details.act summary::after{content:"›";color:#9E9BBF;transform:rotate(90deg)}details.act[open] summary::after{transform:rotate(-90deg)}
+details.act[open]{padding-bottom:14px}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.nav{max-width:none}main{padding:20px 16px}.grid2{grid-template-columns:1fr}.span2{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="shell">
+ <nav class="nav" aria-label="Control panel">
+  <div class="brand"><div class="logo">C</div><div><b>Crestline</b><small>FitDesk Pro control panel</small></div></div>
+  <a href="/control/" class="{% if nav == 'today' %}on{% endif %}">Today</a>
+  <a href="/control/gyms/" class="{% if nav == 'gyms' %}on{% endif %}">Gyms &amp; licences{% if badges.ending_soon %}<span class="cnt w">{{ badges.ending_soon }}</span>{% endif %}</a>
+  <a class="soon" title="Coming in the next phase">Renewals &amp; money <small>soon</small></a>
+  <a href="/admin/licensing/supportquery/" title="Opens the old admin until the Support page is built">Support{% if badges.open_support %}<span class="cnt">{{ badges.open_support }}</span>{% endif %}</a>
+  <a class="soon" title="Coming in the next phase">Health &amp; backups <small>soon</small></a>
+  <div style="flex:1"></div>
+  <a href="/control/gyms/new/" class="add">+ Add a gym</a>
+  <div class="who"><span>{{ request.user.username }}</span><form method="post" action="/control/logout/">{% csrf_token %}<button type="submit">Sign out</button></form></div>
+  <div class="who" style="padding-top:6px"><a href="/admin/" style="padding:0;color:#9E9BBF">Old admin ↗</a></div>
+ </nav>
+ <main>
+  {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+  {% block main %}{% endblock %}
+ </main>
+</div>
+</body>
+</html>

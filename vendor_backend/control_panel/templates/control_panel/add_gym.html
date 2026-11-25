@@ -1,0 +1,62 @@
+{% extends "control_panel/base.html" %}
+{% block title %}Add a gym{% endblock %}
+{% block main %}
+<div class="head"><div><h1>Add a gym</h1><p class="sub">Three steps. At the end you get the licence key and the owner's setup code to share.</p></div></div>
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+ <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '1' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '1' %}style="color:#4B3FD6"{% endif %}>1 · Gym &amp; owner</b>{% if step != '1' %} <span class="chip ok">done</span>{% endif %}<div class="small muted">Name, owner, mobile, city</div></div>
+ <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '2' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '2' %}style="color:#4B3FD6"{% endif %}>2 · Plan &amp; licence</b>{% if step == '3' %} <span class="chip ok">done</span>{% endif %}<div class="small muted">Plan, length, desktop PCs</div></div>
+ <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '3' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '3' %}style="color:#4B3FD6"{% endif %}>3 · Hand-over</b><div class="small muted">Licence key + owner setup code</div></div>
+</div>
+
+{% if err %}<div class="msg error">{{ err }}</div>{% endif %}
+
+{% if step == '1' %}
+<form method="post" action="/control/gyms/new/" class="card" style="max-width:760px;padding:22px">{% csrf_token %}<input type="hidden" name="step" value="1">
+ <h2 style="margin-bottom:14px">Step 1 · Gym &amp; owner</h2>
+ <div class="grid2">
+  <label class="f span2">Gym name<input name="gym_name" value="{{ draft.gym_name }}" placeholder="e.g. Iron Core Gym" required autofocus></label>
+  <label class="f">Owner's name<input name="owner_name" value="{{ draft.owner_name }}" required></label>
+  <label class="f">Owner's mobile<input name="phone" value="{{ draft.phone }}" placeholder="10-digit mobile" inputmode="tel" required></label>
+  <label class="f">City<input name="city" value="{{ draft.city }}"></label>
+  <label class="f">Email<input name="email" type="email" value="{{ draft.email }}" placeholder="Optional"></label>
+  <label class="f span2">Notes<textarea name="notes" rows="3" placeholder="How you met them, what they need">{{ draft.notes }}</textarea></label>
+ </div>
+ <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><a class="btn" href="/control/gyms/">Cancel</a><button class="btn pr" type="submit">Next: plan &amp; licence</button></div>
+</form>
+
+{% elif step == '2' %}
+<form method="post" action="/control/gyms/new/" class="card" style="max-width:760px;padding:22px">{% csrf_token %}<input type="hidden" name="step" value="2">
+ <h2 style="margin-bottom:4px">Step 2 · Plan &amp; licence</h2>
+ <p class="small muted" style="margin:0 0 14px">For <b>{{ draft.gym_name }}</b> · {{ draft.owner_name }} · {{ draft.phone }} <a href="/control/gyms/new/?step=1">change</a></p>
+ <div class="grid2">
+  <label class="f">Plan<select name="plan">{% for p in plans %}<option value="{{ p.pk }}" {% if p.plan_id == 'premium' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
+  <label class="f">Licence runs for<select name="months">{% for m in renew_months %}<option value="{{ m }}" {% if m == 12 %}selected{% endif %}>{% if m == 1 %}1 month{% elif m == 12 %}1 year{% elif m == 24 %}2 years{% else %}{{ m }} months{% endif %}</option>{% endfor %}</select></label>
+  <label class="f">Desktop PCs allowed (v1.2.0)<input name="max_devices" type="number" min="1" max="20" value="1"></label>
+  <label class="f">Price agreed ₹<input name="price" inputmode="decimal" placeholder="e.g. 18000 (launch offer) or 25000"></label>
+ </div>
+ <p class="small muted" style="margin:12px 0 0">The price is noted in the gym's history for now; payments and invoices come with the Renewals &amp; money page.</p>
+ <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><a class="btn" href="/control/gyms/new/?step=1">Back</a><button class="btn pr" type="submit">Create gym &amp; licence</button></div>
+</form>
+
+{% else %}
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+ <section class="card" style="flex:3 1 460px;min-width:0;padding:22px">
+  <h2>{{ c.gym_name }} is ready</h2>
+  <p class="small muted" style="margin:4px 0 14px">{{ c.owner_name }} · {{ c.phone }} · licence valid until {{ lic.expiry_date|date:"j M Y" }}</p>
+  <label class="f">Message to send (you can edit it in WhatsApp)<textarea rows="13" readonly class="mono" style="font-size:12.5px">{{ text }}</textarea></label>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+   <a class="btn pr" href="{{ wa }}" target="_blank" rel="noopener">Send to {{ c.owner_name }} on WhatsApp</a>
+   <a class="btn" href="/control/gyms/{{ c.id }}/">Open the gym</a>
+   <a class="btn" href="/control/gyms/new/">Add another gym</a>
+  </div>
+ </section>
+ <aside style="flex:2 1 320px;min-width:0;background:#14122B;color:#fff;border-radius:14px;padding:22px">
+  <div class="small" style="color:#B3A9FF;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Hand-over</div>
+  <div style="background:#2A2650;border-radius:12px;padding:14px;margin:12px 0 10px"><div class="small" style="color:#C9C6E6">Licence key</div><div class="mono" style="font-size:17px;font-weight:700;margin-top:2px">{{ lic.key }}</div></div>
+  <div style="background:#2A2650;border-radius:12px;padding:14px;margin-bottom:12px"><div class="small" style="color:#C9C6E6">Owner setup code (one time, 7 days)</div><div class="mono" style="font-size:17px;font-weight:700;margin-top:2px">{% if code %}{{ code }}{% else %}already shown{% endif %}</div></div>
+  <p class="small" style="color:#C9C6E6;line-height:1.55;margin:0">{% if code %}This code is shown only on this page. If it gets lost, open the gym and make a new one.{% else %}The setup code is shown once. Open the gym and make a new one if needed.{% endif %}<br>App address: {{ app_address }}</p>
+ </aside>
+</div>
+{% endif %}
+{% endblock %}
