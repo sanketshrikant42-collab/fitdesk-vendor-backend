@@ -382,7 +382,7 @@ class DietPdfTests(AutoBase):
             self.assertEqual(self.client.get(url).status_code, 404)
         with mock.patch.dict("os.environ", {"PUBLIC_BASE_URL": "https://fitdesk.example.com"}):
             j = self.req("POST", f"diet/plans/{p['id']}/share/", self.owner, {})[1]
-        self.assertTrue(j["pdf"]["url"].startswith("https://fitdesk.example.com/api/v1/d/"))
+        self.assertRegex(j["pdf"]["url"], r"^https://fitdesk\.example\.com/d/[2-9a-zA-Z]{7}$")
         self.assertFalse(j["pdf"]["local_only"])
         self.assertNotIn("PDF", self.req("POST", f"diet/plans/{p['id']}/share/", self.owner, {"include_pdf": False})[1]["whatsapp"]["text"])
 
@@ -644,18 +644,40 @@ class ReceiptMemberLinkTests(AutoBase):
         s, b = self.bill(self.rec, m["id"], self.monthly, amount_paid="1500")
         self.assertEqual(s, 201, b)
         link = b["bill"]["whatsapp"]["receipt_link"]
-        self.assertTrue(link.startswith("http://testserver/api/v1/r/"), link)
+        self.assertRegex(link, r"^http://testserver/r/[2-9a-zA-Z]{7}$")         # short (25 Nov 2026)
         self.assertIn("📄 Your receipt (PDF): " + link, b["bill"]["whatsapp"]["text"])
-        self.assertTrue(unquote(link).endswith(f"{b['bill']['receipt_no']} - Rohit Patil.pdf"))
         path = link.replace("http://testserver", "")
         r = self.client.get(path)                                   # no sign-in needed
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r["Content-Type"], "application/pdf")
         self.assertTrue(r["Content-Disposition"].startswith("attachment"))
+        self.assertIn(f"{b['bill']['receipt_no']} - Rohit Patil.pdf", unquote(r["Content-Disposition"]))
         self.assertTrue(self.client.get(path + "?view=1")["Content-Disposition"].startswith("inline"))
-        self.assertEqual(self.client.get(path.replace("/r/", "/r/x")).status_code, 404)   # tampered link
+        self.assertEqual(self.client.get("/")["Location"], "/app/")            # bare address opens the app
+        bad = self.client.get("/r/zzzzzzz")                          # unknown code: friendly page, not JSON
+        self.assertEqual(bad.status_code, 404)
+        self.assertIn("text/html", bad["Content-Type"])
+        self.assertEqual(self.client.get("/d/" + path.rsplit("/", 1)[1]).status_code, 404)   # receipt code isn't a diet code
+        # sharing again the same day keeps the same short link
+        self.assertEqual(self.req("GET", f"bills/{b['bill']['id']}/", self.rec)[1]["bill"]["whatsapp"]["receipt_link"], link)
+        # links sent before short links existed still work
+        from django.core import signing
+        from gym_core import services as CS
+        old = signing.dumps({"b": b["bill"]["id"], "c": self.gym.id}, salt=CS.RECEIPT_MEMBER_SALT)
+        self.assertEqual(self.client.get(f"/api/v1/r/{old}/x.pdf").status_code, 200)
+        self.assertEqual(self.client.get(f"/api/v1/r/x{old}/x.pdf").status_code, 404)   # tampered long link
+        # expiry still comes from the signed token (60 days)
+        from unittest import mock
+        import time
+        real = time.time
+        with mock.patch("time.time", lambda: real() + 61 * 86400):
+            r = self.client.get(path)
+            self.assertEqual(r.status_code, 404)
+            self.assertIn("expired", r.content.decode())
         Bill.objects.filter(id=b["bill"]["id"]).update(status=Bill.STATUS_CANCELLED)
-        self.assertEqual(self.client.get(path).status_code, 410)
+        r = self.client.get(path)
+        self.assertEqual(r.status_code, 410)
+        self.assertIn("cancelled", r.content.decode())
 
     def test_own_message_gets_link_at_end_or_where_placed(self):
         from gym_core.models import GymSettings

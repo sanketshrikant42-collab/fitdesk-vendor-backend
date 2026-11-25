@@ -297,10 +297,12 @@ def diet_member_link(request, p):
     from urllib.parse import quote
     from django.core import signing
     from gym_ops import services as OS
+    from gym_core.models import ShortLink
     token = signing.dumps({"p": p.id, "v": p.current_version, "c": p.client_id}, salt=DIET_LINK_SALT)
     name = diet_filename(OS.diet_plan_json(p, with_nutrition=False))
     base = public_base(request)
-    return f"{base}/api/v1/d/{token}/{quote(name)}", name, is_local(base)
+    link = ShortLink.make(ShortLink.KIND_DIET, p.client, f"{p.id}:{p.current_version}", token, name)
+    return f"{base}/d/{link.code}", name, is_local(base)
 
 
 @endpoint("GET")
@@ -482,3 +484,51 @@ def reminder_email(request, reminder_id):
     r.channel = "email"
     r.save(update_fields=["channel"])
     return _sent(to, {"reminder": S.reminder_json(r)})
+
+
+# --- short links (/r/<code>, /d/<code>) ---------------------------------------------------------
+
+_SHORT_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>FitDesk Pro</title>
+<style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f3fb;
+font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d1b33}}
+.c{{max-width:380px;margin:24px;padding:28px 26px;background:#fff;border-radius:16px;
+box-shadow:0 6px 30px rgba(40,30,90,.10);text-align:center}}h1{{font-size:19px;margin:0 0 8px}}
+p{{margin:0;color:#5b5878}}</style></head><body><div class="c"><h1>{title}</h1><p>{text}</p></div></body></html>"""
+
+
+def _short_page(title, text, status):
+    from django.utils.html import escape
+    return HttpResponse(_SHORT_PAGE.format(title=escape(title), text=escape(text)), status=status,
+                        content_type="text/html; charset=utf-8")
+
+
+def _short(request, code, kind, view):
+    import json
+    from gym_core.models import ShortLink
+    if request.method not in ("GET", "HEAD"):
+        return _short_page("Not allowed", "Open this link in a browser.", 405)
+    link = ShortLink.objects.filter(code=code, kind=kind).first()
+    what = "receipt" if kind == ShortLink.KIND_RECEIPT else "diet plan"
+    if link is None:
+        return _short_page("Link not found", f"This {what} link isn't valid. Please ask your gym to send it again.", 404)
+    resp = view(request, link.token, link.filename)
+    if resp.status_code >= 400 and resp.get("Content-Type", "").startswith("application/json"):
+        try:
+            msg = json.loads(resp.content).get("message") or ""
+        except ValueError:
+            msg = ""
+        return _short_page("Link not available", msg or f"Please ask your gym to send the {what} again.", resp.status_code)
+    return resp
+
+
+def receipt_short(request, code):
+    """/r/<code>: the receipt PDF sent on WhatsApp (saves it; ?view=1 shows it)."""
+    from gym_core.models import ShortLink
+    return _short(request, code, ShortLink.KIND_RECEIPT, receipt_member_shared)
+
+
+def diet_short(request, code):
+    """/d/<code>: the diet plan PDF sent on WhatsApp."""
+    from gym_core.models import ShortLink
+    return _short(request, code, ShortLink.KIND_DIET, diet_pdf_shared)

@@ -536,14 +536,18 @@ def public_base(request):
 
 
 def receipt_member_link(b, base):
-    """Link the member gets on WhatsApp: downloads "RCPT00012 - Name.pdf",
-    works for 60 days without signing in, and stops if the bill is cancelled."""
+    """Link the member gets on WhatsApp: a short /r/<code> address that
+    downloads "RCPT00012 - Name.pdf", works for 60 days without signing in,
+    and stops if the bill is cancelled. (The long /api/v1/r/<token>/ links
+    sent before 25 Nov 2026 keep working.)"""
     import re
     from urllib.parse import quote
     from django.core import signing
+    from .models import ShortLink
     token = signing.dumps({"b": str(b.id), "c": b.client_id}, salt=RECEIPT_MEMBER_SALT)
     name = re.sub(r"\s+", " ", re.sub(r'[\\/:*?"<>|\r\n\t]+', " ", f"{b.receipt_no} - {b.member.name}")).strip()[:120] + ".pdf"
-    return f"{base}/api/v1/r/{token}/{quote(name)}"
+    link = ShortLink.make(ShortLink.KIND_RECEIPT, b.client, b.id, token, name)
+    return f"{base}/r/{link.code}"
 
 
 def bill_json(b, with_links=True, base=None):

@@ -18,9 +18,11 @@ from django.contrib import admin
 from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 from licensing import views as licensing_views
 from gym_core import views as gym_core_views
+from gym_auto import views as gym_auto_views
 
 def healthz(request):
     """Render's health check (Phase 1): the app is up AND can reach its
@@ -35,6 +37,8 @@ def healthz(request):
 
 
 urlpatterns = [
+    # fitdesk.crestlinetechnologies.in (or any address) opens the app straight away.
+    path('', RedirectView.as_view(url='/app/', permanent=False)),
     path('healthz/', healthz),
     path('admin/', admin.site.urls),
     path('api/', include('licensing.urls')),
@@ -48,6 +52,9 @@ urlpatterns = [
     path('api/v1/', include('gym_accounts.urls')),
     # The FitDesk Pro web app for gyms (sign-in screens + the whole app).
     path('app/', gym_core_views.app_page, name='fitdesk_app'),
+    # Short links members get on WhatsApp (receipt / diet plan PDF).
+    path('r/<str:code>', gym_auto_views.receipt_short),
+    path('d/<str:code>', gym_auto_views.diet_short),
     path('api/v1/', include('gym_core.urls')),
     path('api/v1/', include('gym_ops.urls')),
     path('api/v1/', include('gym_auto.urls')),

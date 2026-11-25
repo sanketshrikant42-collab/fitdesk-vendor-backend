@@ -39,7 +39,10 @@ class Command(BaseCommand):
         try:
             src = Source(tmp)
         except SourceError as e:
-            os.remove(tmp)
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
             raise CommandError(str(e))
         today = date.fromisoformat(o["today"]) if o.get("today") else timezone.localdate(timezone=IST)
         imp = Importer(src, gym_name=o.get("gym_name"), owner_name=o["owner_name"], owner_phone=o["owner_phone"], today=today)

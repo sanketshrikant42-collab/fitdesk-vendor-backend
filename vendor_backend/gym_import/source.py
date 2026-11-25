@@ -53,6 +53,14 @@ class Source:
         self.path = path
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
+        try:
+            self._check()
+        except Exception:
+            # close before raising: Windows can't delete a file that is still open
+            self.db.close()
+            raise
+
+    def _check(self):
         if self.db.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
             raise SourceError("The FitDesk database failed SQLite's integrity check.")
         self.tables = {r[0] for r in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}

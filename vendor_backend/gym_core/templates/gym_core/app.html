@@ -38,7 +38,23 @@ aside a .badge{margin-left:auto;background:var(--dg);color:#fff;border-radius:99
 .topbar .sp{flex:1}.topbar select{width:auto;height:32px;font-size:12px}
 .me{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.25}.me .av{width:30px;height:30px;font-size:11px}
 .menu-btn{display:none}
-.page{padding:22px 24px 40px;width:100%;max-width:1320px}
+/* staff attendance reminder (25 Nov 2026) */
+.attbar{display:flex;align-items:center;gap:14px;border:1px solid var(--bd);border-radius:14px;padding:12px 16px;margin-bottom:16px;background:var(--surface);box-shadow:var(--shadow)}
+.attbar.todo{border-color:var(--wn);background:var(--wnl)}
+.attbar .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;background:var(--row);color:var(--t2)}
+.attbar.todo .ic{background:var(--wn);color:#fff}.attbar.done .ic{background:var(--okl,#e3f6ea);color:var(--ok-t,#15803d)}
+.attbar .tx{flex:1;min-width:0}.attbar .tx b{display:block;font-size:14px}.attbar .tx span{color:var(--t2);font-size:12.5px}
+.attbar .pg{width:120px;height:6px;border-radius:99px;background:var(--row);overflow:hidden;flex:none}.attbar .pg i{display:block;height:100%;background:var(--ok,#16a34a)}
+.aq{display:grid;gap:0}.aq-r{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--row)}.aq-r:last-child{border-bottom:0}
+.aq-r .who{flex:1;min-width:0}
+.aq-s{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.aq-s button{height:30px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:600}
+.aq-s button.on[data-v="Present"]{background:#16a34a;border-color:#16a34a;color:#fff}
+.aq-s button.on[data-v="Half Day"]{background:#d97706;border-color:#d97706;color:#fff}
+.aq-s button.on[data-v="Absent"]{background:#dc2626;border-color:#dc2626;color:#fff}
+.aq-s button.on[data-v="Paid Leave"],.aq-s button.on[data-v="Weekly Off"],.aq-s button.on[data-v="Holiday"]{background:var(--p);border-color:var(--p);color:var(--on-p)}
+@media(max-width:640px){.attbar{flex-wrap:wrap}.attbar .pg{display:none}.aq-r{flex-direction:column;align-items:stretch}.aq-s{justify-content:flex-start}}
+.page{padding:22px clamp(14px,1.8vw,32px) 40px;width:100%;max-width:none}
 .ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .ph .sub{margin:0}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -236,6 +252,7 @@ table.mini td{padding:8px 4px}table.mini tr:last-child td{border-bottom:0}
     <button onclick="openAddMember()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M19 8v6M22 11h-6"/></svg>Add member</button>
     <button class="pr" onclick="go('bill')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New bill</button></div>
   </div>
+  <div id="attbar"></div>
   <div class="dkpis" id="kpis"></div>
   <div class="dg">
    <div class="card c8 money" id="cc-coll"><div class="ch"><div><h3>Collections</h3><p class="cs" id="coll-sub">Money received</p></div>
@@ -507,7 +524,7 @@ async function who(){const j=await call("GET","me/");if(!j.ok){ME=null;GYM=null;
   {$("gmsg").innerHTML=`<b>${t.pending_devices} device${t.pending_devices>1?"s are":" is"} waiting for your approval.</b> <a class="link" href="#team">Review in Team &amp; devices</a>`;$("gmsg").className="msg show"}})}
 
 /* ============================== MODAL ============================== */
-function modal(title,body,foot,wide){$("md-t").innerHTML=title;$("md-b").innerHTML=body;$("md-f").innerHTML=foot||"";$("md-f").classList.toggle("hidden",!foot);$("md").classList.toggle("wide",!!wide);$("md-bg").classList.add("on");setTimeout(()=>{const f=$("md-b").querySelector("input:not([type=hidden]),select,textarea");if(f&&!f.closest("[data-nofocus]"))f.focus()},50)}
+function modal(title,body,foot,wide){$("md-t").innerHTML=title;$("md-b").innerHTML=body;$("md-f").innerHTML=foot||"";$("md-f").classList.toggle("hidden",!foot);$("md").classList.toggle("wide",!!wide);$("md").classList.remove("narrow");$("md-bg").classList.add("on");setTimeout(()=>{const f=$("md-b").querySelector("input:not([type=hidden]),select,textarea");if(f&&!f.closest("[data-nofocus]"))f.focus()},50)}
 function closeModal(){$("md-bg").classList.remove("on")}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("md-bg").classList.contains("on")&&!document.querySelector(".mp-list.on"))closeModal()});
 const F=(id,l,v,o)=>{o=o||{};const a=`id="${id}"${o.ph?` placeholder="${esc(o.ph)}"`:""}${o.im?` inputmode="${o.im}"`:""}${o.list?` list="${o.list}"`:""}`;
@@ -648,6 +665,7 @@ function tile(o){return `<div class="tile" onclick="go('${o.go}')" title="Open $
 const dpill=(now,before)=>{now=+now;before=+before;if(!before)return now?`<span class="delta up">new</span>`:"";const p=Math.round((now-before)*100/before);
  return `<span class="delta ${p>0?"up":p<0?"down":"flat"}">${p>0?"▲":p<0?"▼":"■"} ${Math.abs(p)}%</span>`};
 async function loadDash(){
+ attBanner();
  $("dash-sub").textContent=new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})+(GYM?" · "+GYM.name:"");
  const [j,x]=await Promise.all([call("GET","dashboard/"),call("GET","dashboard/insights/")]);
  if(!j.ok){document.querySelector(".dg").classList.add("hidden");return denied($("kpis"),j)}
@@ -676,6 +694,40 @@ async function loadDash(){
  $("v-today").innerHTML=today||`<div class="muted" style="padding:6px 4px 10px">No birthdays today.</div>`;
  if(can("receipts"))call("GET","reminders/").then(r=>{if(!r.ok)return;const p=Object.values(r.counts).reduce((a,c)=>a+c.pending,0);
   $("v-today").insertAdjacentHTML("beforeend",`<div class="today-it" onclick="go('rem')"><div class="av">✉</div><div><b>${p?`${p} reminder${p>1?"s":""} to send`:"All reminders sent"}</b><div class="muted">${p?"Renewals, dues and birthdays":"Nothing waiting for today"}</div></div></div>`)})}
+/* ============ STAFF ATTENDANCE REMINDER (card + once-a-day pop-up) ============ */
+const ATT_POP_HOUR=11;                         // pop-up shows from 11 am if attendance isn't done
+const AQ_ST=[["Present","Present"],["Half Day","Half"],["Absent","Absent"],["Paid Leave","Leave"],["Weekly Off","Off"]];
+let AQ=[];
+const canMarkAtt=()=>can("attendance","edit");
+async function attToday(){const j=await call("GET","staff-attendance/?date="+today());if(!j.ok)return null;
+ const rows=j.rows,marked=rows.filter(r=>r.status).length;return {rows,total:rows.length,marked,left:rows.length-marked}}
+async function attBanner(){const el=$("attbar");if(!el)return;if(!canMarkAtt()){el.innerHTML="";return}
+ const a=await attToday();if(!a||!a.total){el.innerHTML="";return}
+ const done=a.left===0,pct=Math.round(a.marked*100/a.total);
+ el.innerHTML=`<div class="attbar ${done?"done":"todo"}"><div class="ic">${done?"✓":`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`}</div><div class="tx"><b>${done?"Staff attendance is done for today":"Staff attendance not done yet"}</b><span>${a.marked} of ${a.total} staff marked today${done?"":` · ${a.left} left`}</span></div><div class="pg"><i style="width:${pct}%"></i></div><button class="${done?"":"pr"}" onclick="attQuick()">${done?"View / change":"Mark now"}</button></div>`;
+ attMaybePop(a)}
+function attPopKey(){return "fd-attpop-"+(GYM?GYM.id||GYM.name:"")+"-"+today()}
+function attMaybePop(a){if(!a||!a.left||new Date().getHours()<ATT_POP_HOUR)return;
+ let seen=null;try{seen=localStorage.getItem(attPopKey())}catch(e){}
+ if(seen&&Date.now()<+seen)return;
+ if(document.querySelector("#md-bg.on"))return;                   // don't cover another open window
+ attQuick(a,true)}
+async function attQuick(pre,auto){const a=pre&&pre.rows?pre:await attToday();if(!a)return;AQ=a.rows.map(r=>({...r,pick:r.status&&!r.inferred?r.status:(r.inferred?"Weekly Off":"")}));
+ const d=new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"});
+ modal("Staff attendance · today",`<p class="muted" style="margin-top:0">${esc(d)}. Tap one status for each person, then save.${auto?" This reminder shows once a day until attendance is done.":""}</p>
+  <div class="row" style="margin:0 0 6px;justify-content:space-between"><span class="muted" id="aq-n"></span><button class="sm" onclick="aqAll('Present')">Mark all present</button></div>
+  <div class="aq">${AQ.map((r,i)=>`<div class="aq-r"><div class="who"><div class="av">${ini(r.name)}</div><div><b>${esc(r.name)}</b><span class="muted">${esc(r.code)} · ${esc(r.designation)}</span></div></div>
+   <div class="aq-s" id="aq${i}">${AQ_ST.map(([v,l])=>`<button type="button" data-v="${v}" class="${r.pick===v?"on":""}" onclick="aqPick(${i},'${v}')">${l}</button>`).join("")}</div></div>`).join("")}</div><div class="msg" id="aqmsg"></div>`,
+  `${auto?`<button onclick="attSnooze()">Remind me in 1 hour</button>`:`<button onclick="closeModal()">Close</button>`}<button onclick="closeModal();go('att')">Full page</button><button class="pr" onclick="aqSave()">Save attendance</button>`);aqCount()}
+function aqCount(){const n=AQ.filter(r=>r.pick).length;$("aq-n").textContent=`${n} of ${AQ.length} marked`}
+function aqPick(i,v){AQ[i].pick=AQ[i].pick===v?"":v;document.querySelectorAll(`#aq${i} button`).forEach(b=>b.classList.toggle("on",b.dataset.v===AQ[i].pick));aqCount()}
+function aqAll(v){AQ.forEach((r,i)=>{r.pick=v;document.querySelectorAll(`#aq${i} button`).forEach(b=>b.classList.toggle("on",b.dataset.v===v))});aqCount()}
+function attSnooze(){try{localStorage.setItem(attPopKey(),String(Date.now()+3600e3))}catch(e){}closeModal()}
+async function aqSave(){const rows=AQ.filter(r=>r.pick&&!(r.inferred&&r.pick==="Weekly Off")).map(r=>({staff_id:r.staff_id,date:today(),status:r.pick,check_in:r.check_in||"",check_out:r.check_out||"",remarks:r.remarks||""}));
+ if(!rows.length&&AQ.some(r=>!r.pick))return say("aqmsg","Pick a status for at least one person.");
+ const j=rows.length?await call("POST","staff-attendance/",{rows}):{ok:true,saved:0};if(!j.ok)return say("aqmsg",err(j));
+ try{localStorage.setItem(attPopKey(),String(Date.now()+86400e3))}catch(e){}
+ closeModal();attBanner();if(document.querySelector('section[data-page="att"]:not(.hidden)'))loadAtt()}
 async function loadDesk(){const j=await call("GET","checkins/");if(!j.ok)return denied($("dlist"),j,4);$("dcount").textContent=`· ${j.total}`;
  $("dlist").innerHTML=j.checkins.map(c=>`<tr class="click" onclick="openMember('${c.member.id}')"><td><div class="who"><div class="av">${ini(c.member.name)}</div><div><b>${esc(c.member.name)}</b><span class="muted">${esc(c.member.code)}</span></div></div>${c.override_reason?`<span class="chip c-wn">let in: ${esc(c.override_reason)}</span>`:""}</td><td>${new Date(c.at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</td><td>${esc(c.by||"")}${c.device?` <span class="muted">· ${esc(c.device)}</span>`:""}</td><td>${esc(c.source.replace("_"," "))}</td></tr>`).join("")||empty(4,"No check-ins yet today");$("dq").focus()}
 async function lookup(){const q=V("dq");if(!q){$("dres").innerHTML="";return}const j=await call("GET","checkins/lookup/?q="+encodeURIComponent(q));if(!j.ok)return say("dmsg",err(j));$("dmsg").className="msg";

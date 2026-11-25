@@ -320,3 +320,43 @@ class CheckIn(models.Model):
         ordering = ["-checked_in_at"]
         constraints = [models.UniqueConstraint(fields=["client", "member", "local_date"], name="one_checkin_per_member_per_day")]
         indexes = [models.Index(fields=["client", "local_date"])]
+
+
+class ShortLink(models.Model):
+    """Short address for a link sent to a member on WhatsApp
+    (/r/K7P2QXa for a receipt, /d/K7P2QXa for a diet plan). It only points
+    at the long signed token, so the expiry and every other check stay with
+    the token (60 days, cancelled bill, licence lapsed)."""
+
+    KIND_RECEIPT, KIND_DIET = "r", "d"
+
+    code = models.CharField(max_length=12, primary_key=True)
+    kind = models.CharField(max_length=1)
+    client = models.ForeignKey(Client, related_name="short_links", on_delete=models.CASCADE)
+    target = models.CharField(max_length=64, help_text="Bill id, or diet plan id:version.")
+    token = models.TextField()
+    filename = models.CharField(max_length=160, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [models.Index(fields=["kind", "target", "created_at"])]
+
+    ALPHABET = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"   # no 0/O, 1/l/I
+    LENGTH = 7
+    REUSE_SECONDS = 24 * 3600     # the same bill/plan shared again within a day keeps its code
+
+    @classmethod
+    def make(cls, kind, client, target, token, filename=""):
+        import secrets
+        from datetime import timedelta
+        recent = (cls.objects.filter(kind=kind, client=client, target=str(target),
+                                     created_at__gte=timezone.now() - timedelta(seconds=cls.REUSE_SECONDS))
+                  .order_by("-created_at").first())
+        if recent:
+            return recent
+        for _ in range(8):
+            code = "".join(secrets.choice(cls.ALPHABET) for _ in range(cls.LENGTH))
+            if not cls.objects.filter(code=code).exists():
+                return cls.objects.create(code=code, kind=kind, client=client, target=str(target),
+                                          token=token, filename=filename[:160])
+        raise RuntimeError("Could not pick a free short code.")
