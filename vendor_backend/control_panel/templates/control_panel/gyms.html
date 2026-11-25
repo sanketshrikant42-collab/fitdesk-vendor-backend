@@ -1,4 +1,5 @@
 {% extends "control_panel/base.html" %}
+{% load cp %}
 {% block title %}{% if sel %}{{ sel.gym_name }}{% else %}Gyms &amp; licences{% endif %}{% endblock %}
 {% block main %}
 <div class="head">
@@ -55,7 +56,7 @@
 
   <div class="grid2" style="margin:16px 0">
    <div class="box"><div class="small muted">Owner</div><b>{{ sel.owner_name }}</b><div class="small">{{ sel.phone }}{% if sel.email %} · {{ sel.email }}{% endif %}</div></div>
-   <div class="box"><div class="small muted">Plan</div><b>{% if d.lic.plan %}{{ d.lic.plan.name }}{% else %}Not set{% endif %}</b><div class="small">{{ d.lic.max_devices }} desktop PC{{ d.lic.max_devices|pluralize }} allowed</div></div>
+   <div class="box"><div class="small muted">Plan</div><b>{% if d.lic.plan %}{{ d.lic.plan.name }}{% else %}Not set{% endif %}</b><div class="small">{% if billing.yearly_price %}{{ billing.yearly_price|inr }} / year{% if billing.launch_offer %} · launch offer{% endif %} · {% endif %}{{ d.lic.max_devices }} desktop PC{{ d.lic.max_devices|pluralize }}</div></div>
    <div class="box"><div class="small muted">Licence key</div>
     {% if d.lic %}<b class="mono" style="font-size:13px" id="lk" data-key="{{ d.lic.key }}">FDPX-••••-••••-{{ d.lic.key|slice:"-4:" }}</b>
     <div class="small"><a href="#" onclick="var e=document.getElementById('lk');e.textContent=e.dataset.key;navigator.clipboard&&navigator.clipboard.writeText(e.dataset.key);this.textContent='Copied';return false">Show &amp; copy</a></div>{% else %}—{% endif %}</div>
@@ -68,7 +69,7 @@
     <label class="f" style="flex:1 1 160px">Extend by<select name="months">{% for m in renew_months %}<option value="{{ m }}" {% if m == 12 %}selected{% endif %}>{% if m == 1 %}1 month{% elif m == 12 %}1 year{% elif m == 24 %}2 years{% else %}{{ m }} months{% endif %}</option>{% endfor %}</select></label>
     <button class="btn pr" type="submit">Renew</button>
    </form>
-   <p class="small muted" style="margin:8px 0 0">Counts from the current end date, so early renewal never loses days. Recording the payment comes with the Renewals &amp; money page.</p>
+   <p class="small muted" style="margin:8px 0 0">Counts from the current end date, so early renewal never loses days. Got paid? Use <a href="/control/money/?gym={{ sel.id }}#pay">Record a payment</a> instead: it renews and makes the invoice.</p>
   </details>
   {% endif %}
 
@@ -97,10 +98,13 @@
   </details>
 
   {% if d.lic %}
-  <details class="act"><summary>Plan &amp; PC limit</summary>
+  <details class="act"><summary>Plan, price &amp; PC limit</summary>
    <form method="post" action="/control/gyms/{{ sel.id }}/licence/" class="grid2" style="align-items:end">{% csrf_token %}
     <label class="f">Plan<select name="plan">{% if not d.lic.plan %}<option value="">Not set</option>{% endif %}{% for p in plans %}<option value="{{ p.pk }}" {% if d.lic.plan_id == p.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
     <label class="f">Desktop PCs allowed<input name="max_devices" type="number" min="1" max="20" value="{{ d.lic.max_devices }}"></label>
+    <label class="f">Yearly price ₹<input name="yearly_price" inputmode="decimal" value="{{ billing.yearly_price|default_if_none:''|floatformat:'0' }}" placeholder="e.g. 25000"></label>
+    <label class="f">Gym's GSTIN (for invoices)<input name="gstin" value="{{ billing.gstin }}" placeholder="Optional"></label>
+    <label class="span2" style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="launch_offer" style="width:16px;height:16px" {% if billing.launch_offer %}checked{% endif %}> Launch offer (one of the first 50 gyms)</label>
     <div class="span2" style="display:flex;justify-content:flex-end"><button class="btn pr" type="submit">Save</button></div>
    </form>
    {% if d.features %}<p class="small muted" style="margin:8px 0 0">Includes: {{ d.features|join:", " }}</p>{% endif %}
@@ -129,10 +133,16 @@
   </details>
   {% endif %}
 
+  <h3 style="margin-top:18px;display:flex;justify-content:space-between;align-items:center">Payments to Crestline <a class="btn sm pr" href="/control/money/?gym={{ sel.id }}#pay">Record a payment</a></h3>
+  <div class="small" style="display:grid;gap:5px">
+   {% for pay in payments %}<div style="display:flex;justify-content:space-between;gap:8px"><span>{{ pay.paid_on|date:"j M Y" }} · {{ pay.amount|inr }} · {{ pay.mode }}</span><a href="/control/payments/{{ pay.id }}/invoice.pdf" target="_blank">{{ pay.invoice_no }}</a></div>
+   {% empty %}<div class="muted">No payments recorded yet.</div>{% endfor %}
+  </div>
+
   <h3 style="margin-top:18px">Backups &amp; support</h3>
   <div class="small" style="display:grid;gap:5px">
    {% for b in d.backups %}<div>Cloud backup {{ b.created_at|date:"j M, g:i a" }} · {{ b.get_status_display }}</div>{% empty %}<div class="muted">No cloud backups from the desktop app.</div>{% endfor %}
-   {% for sq in d.support %}<div><a href="/admin/licensing/supportquery/{{ sq.id }}/change/">“{{ sq.subject|truncatechars:50 }}”</a> · {{ sq.get_status_display }} · {{ sq.created_at|date:"j M" }}</div>{% endfor %}
+   {% for sq in d.support %}<div><a href="/control/support/{{ sq.id }}/?tab={% if sq.status == 'resolved' %}done{% else %}open{% endif %}">“{{ sq.subject|truncatechars:50 }}”</a> · {{ sq.get_status_display }} · {{ sq.created_at|date:"j M" }}</div>{% endfor %}
   </div>
 
   <h3 style="margin-top:18px">History</h3>

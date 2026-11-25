@@ -1,0 +1,107 @@
+{% extends "control_panel/base.html" %}
+{% load cp %}
+{% block title %}Renewals &amp; money{% endblock %}
+{% block main %}
+<div class="head">
+ <div><h1>Renewals &amp; money</h1><p class="sub">Who has to renew, what gyms have paid you, and your income.</p></div>
+ <a class="btn pr" href="#pay">+ Record a payment</a>
+</div>
+
+{% if reveal and reveal.what == "invoice" %}
+<div class="reveal" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+ <div><div class="small" style="color:#B3A9FF;font-weight:600">INVOICE {{ reveal.invoice }}</div><div style="margin-top:2px">Send the thank-you message with the invoice link to {{ reveal.owner }}.</div></div>
+ <a class="btn pr" href="{{ reveal.wa }}" target="_blank" rel="noopener">Send on WhatsApp</a>
+</div>
+{% endif %}
+
+<div class="kpis">
+ <div class="card kpi"><div class="l">This month</div><div class="v">{{ m.month_sum|inr }}</div><div class="small muted">{{ m.month_n }} payment{{ m.month_n|pluralize }}</div></div>
+ <div class="card kpi"><div class="l">This financial year</div><div class="v">{{ m.fy_sum|inr }}</div><div class="small muted">FY {{ m.fy }} (from 1 April)</div></div>
+ <div class="card kpi {% if m.due %}warn{% endif %}"><div class="l">Due in the next 30 days</div><div class="v">{{ m.due|inr }}</div><div class="small s muted">{% if m.due_n %}{{ m.due_n }} gym{{ m.due_n|pluralize }} to renew{% else %}Nothing due{% endif %}</div></div>
+ <div class="card kpi"><div class="l">Launch-offer seats used</div><div class="v">{{ m.launch_used }} / {{ m.launch_total }}</div><div class="small muted">₹18,000 instead of ₹25,000</div></div>
+</div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+ <div style="flex:3 1 520px;min-width:0;display:grid;gap:16px">
+  <section class="card" style="overflow-x:auto">
+   <h2>Renewals coming up</h2>
+   <p class="small muted" style="margin:4px 0 8px">Ending in the next 45 days or ended in the last 60. Send a reminder, then record the payment when it comes; the licence extends by itself.</p>
+   <table>
+    <thead><tr><th>Gym</th><th>Ends</th><th>Yearly price</th><th>Reminded</th><th></th></tr></thead>
+    <tbody>
+    {% for r in m.renewals %}
+     <tr>
+      <td><a href="/control/gyms/{{ r.c.id }}/" style="color:inherit"><b>{{ r.c.gym_name }}</b></a><div class="small muted">{{ r.c.owner_name }} · {{ r.c.phone }}</div></td>
+      <td><span style="font-weight:600;color:{% if r.days_left < 0 %}#9B1C1C{% elif r.days_left <= 30 %}#8A4A06{% else %}inherit{% endif %}">{{ r.lic.expiry_date|date:"j M Y" }}</span>
+       <div class="small muted">{% if r.days_left < 0 %}ended{% elif r.days_left == 0 %}today{% else %}{{ r.days_left }} day{{ r.days_left|pluralize }}{% endif %}</div></td>
+      <td>{% if r.price %}{{ r.price|inr }}{% else %}<a href="/control/gyms/{{ r.c.id }}/" class="small">set price</a>{% endif %}</td>
+      <td class="small">{% if r.reminded %}{{ r.reminded|date:"j M" }}{% else %}<span class="muted">not yet</span>{% endif %}</td>
+      <td style="text-align:right;white-space:nowrap">
+       <form method="post" action="/control/money/remind/{{ r.c.id }}/" target="_blank" style="display:inline">{% csrf_token %}<button class="btn sm" type="submit">WhatsApp reminder</button></form>
+       <a class="btn sm pr" href="/control/money/?gym={{ r.c.id }}#pay">Paid</a>
+      </td>
+     </tr>
+    {% empty %}
+     <tr><td colspan="5" class="muted" style="padding:24px;text-align:center">No licences ending in the next 45 days.</td></tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </section>
+
+  <section class="card" style="overflow-x:auto">
+   <h2 style="margin-bottom:6px">Payments received</h2>
+   <table>
+    <thead><tr><th>Date</th><th>Gym</th><th>For</th><th>Mode</th><th style="text-align:right">Amount</th><th>Invoice</th></tr></thead>
+    <tbody>
+    {% for p in m.payments %}
+     <tr>
+      <td>{{ p.paid_on|date:"j M Y" }}</td>
+      <td><a href="/control/gyms/{{ p.client_id }}/" style="color:inherit">{{ p.client.gym_name }}</a></td>
+      <td class="small">{% if p.months %}{% if p.months == 12 %}1 year{% elif p.months == 24 %}2 years{% else %}{{ p.months }} month{{ p.months|pluralize }}{% endif %}{% if p.period_to %} · to {{ p.period_to|date:"j M Y" }}{% endif %}{% else %}{{ p.note|default:"Payment" }}{% endif %}</td>
+      <td class="small">{{ p.mode }}{% if p.reference %} · {{ p.reference }}{% endif %}</td>
+      <td style="text-align:right;font-weight:600">{{ p.amount|inr }}</td>
+      <td><a href="/control/payments/{{ p.id }}/invoice.pdf" target="_blank">{{ p.invoice_no }}</a></td>
+     </tr>
+    {% empty %}
+     <tr><td colspan="6" class="muted" style="padding:24px;text-align:center">No payments recorded yet.</td></tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </section>
+
+  <section class="card">
+   <h2 style="margin-bottom:12px">Income, last 12 months</h2>
+   <div style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end;height:150px">
+    {% for b in m.by_month %}<div style="display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:4px;align-items:center" title="{{ b.label }}: {{ b.amount|inr }}">
+     <div style="width:100%;max-width:34px;background:{% if b.amount %}#6D5DF6{% else %}#EEEDF5{% endif %};border-radius:6px 6px 2px 2px;height:{% if b.amount %}{{ b.pct }}%{% else %}3px{% endif %}"></div></div>{% endfor %}
+   </div>
+   <div style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;margin-top:6px">{% for b in m.by_month %}<div class="small muted" style="text-align:center;font-size:11px">{{ b.label }}</div>{% endfor %}</div>
+  </section>
+ </div>
+
+ <aside id="pay" aria-label="Record a payment" class="card" style="flex:2 1 340px;min-width:0;border:2px solid #6D5DF6;padding:20px;position:sticky;top:16px">
+  <h2>Record a payment</h2>
+  <p class="small muted" style="margin:4px 0 14px">Saves the payment, extends the licence and makes an invoice.</p>
+  <form method="post" action="/control/money/" style="display:grid;gap:12px">{% csrf_token %}
+   <label class="f">Gym<select name="client" required>
+    <option value="">Pick a gym…</option>
+    {% for r in gyms %}<option value="{{ r.c.id }}" {% if pre and pre.id == r.c.id %}selected{% endif %}>{{ r.c.gym_name }} · ends {{ r.lic.expiry_date|date:"j M Y" }}</option>{% endfor %}
+   </select></label>
+   <div class="grid2">
+    <label class="f">Extend licence by<select name="months">
+     {% for mo in renew_months %}<option value="{{ mo }}" {% if mo == 12 %}selected{% endif %}>{% if mo == 1 %}1 month{% elif mo == 12 %}1 year{% elif mo == 24 %}2 years{% else %}{{ mo }} months{% endif %}</option>{% endfor %}
+     <option value="0">Don't extend</option>
+    </select></label>
+    <label class="f">Amount ₹<input name="amount" inputmode="decimal" required value="{{ pre_price|default_if_none:''|floatformat:'0' }}" placeholder="e.g. 25000"></label>
+    <label class="f">Mode<select name="mode">{% for md in modes %}<option>{{ md }}</option>{% endfor %}</select></label>
+    <label class="f">UPI / cheque reference<input name="reference" placeholder="Optional"></label>
+    <label class="f">Paid on<input name="paid_on" type="date" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></label>
+    <label class="f">Note<input name="note" placeholder="Optional"></label>
+   </div>
+   <div class="box small">Early renewal never loses remaining days: the new period starts from the current end date.</div>
+   <label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="send" checked style="width:16px;height:16px"> Then send the invoice to the owner on WhatsApp</label>
+   <button class="btn pr" type="submit" style="height:44px">Save payment &amp; renew</button>
+  </form>
+ </aside>
+</div>
+{% endblock %}

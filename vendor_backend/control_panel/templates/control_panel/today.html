@@ -1,4 +1,5 @@
 {% extends "control_panel/base.html" %}
+{% load cp %}
 {% block title %}Today{% endblock %}
 {% block main %}
 <div class="head">
@@ -10,8 +11,8 @@
 <div class="kpis">
  <a class="card kpi" href="/control/gyms/" style="color:inherit"><div class="l">Active gyms</div><div class="v">{{ s.gyms_active }}</div><div class="small muted">{{ s.gyms_new_app }} on the new app · {{ s.gyms_old_app }} on v1.2.0</div></a>
  <a class="card kpi {% if s.ending_soon %}warn{% endif %}" href="/control/gyms/?f=soon" style="color:inherit"><div class="l">Licences ending in 30 days</div><div class="v">{{ s.ending_soon }}</div><div class="small s muted">{% if s.ending_soon %}Call them to renew{% else %}Nothing coming up{% endif %}</div></a>
- <a class="card kpi {% if s.open_support %}bad{% endif %}" href="/admin/licensing/supportquery/?status__exact=open" style="color:inherit"><div class="l">Open support</div><div class="v">{{ s.open_support }}</div><div class="small s muted">{% if s.support_late %}{{ s.support_late }} waiting over 24 hours{% else %}No one waiting long{% endif %}</div></a>
- <div class="card kpi {% if s.backup_warn %}warn{% endif %}"><div class="l">Backup warnings</div><div class="v">{{ s.backup_warn }}</div><div class="small s muted">{% if s.backup_warn %}Desktop gyms with no backup in 2+ days{% else %}All desktop backups recent{% endif %}</div></div>
+ <a class="card kpi" href="/control/money/" style="color:inherit"><div class="l">Income this month</div><div class="v">{{ s.money.month_sum|inr }}</div><div class="small muted">{{ s.money.month_n }} payment{{ s.money.month_n|pluralize }} · FY {{ s.money.fy }}: {{ s.money.fy_sum|inr }}</div></a>
+ <a class="card kpi {% if s.open_support %}bad{% endif %}" href="/control/support/" style="color:inherit"><div class="l">Open support</div><div class="v">{{ s.open_support }}</div><div class="small s muted">{% if s.support_late %}{{ s.support_late }} waiting over 24 hours{% else %}No one waiting long{% endif %}</div></a>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px" class="tgrid">
@@ -24,13 +25,13 @@
     <div class="tx"><b>{{ t.row.c.gym_name }}</b> · {% if t.kind == "expired" %}licence ended {{ t.row.lic.expiry_date|date:"j M" }}{% elif t.row.days_left == 0 %}licence ends today{% else %}licence ends in {{ t.row.days_left }} day{{ t.row.days_left|pluralize }}{% endif %}
      <div class="small muted">{{ t.row.c.owner_name }} · {{ t.row.c.phone }}</div></div>
     <a class="btn sm" href="https://wa.me/{{ t.row.wa }}" target="_blank" rel="noopener">WhatsApp</a>
-    <a class="btn sm pr" href="/control/gyms/{{ t.row.c.id }}/#renew">Renew</a>
+    <a class="btn sm pr" href="/control/money/?gym={{ t.row.c.id }}#pay">Paid / renew</a>
    </div>
    {% elif t.kind == "support" %}
    <div class="todo">
     <div class="ic bad"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
     <div class="tx"><b>{{ t.q.client.gym_name }}</b> · “{{ t.q.subject|truncatechars:70 }}”<div class="small muted">Support · asked {{ t.q.created_at|timesince }} ago</div></div>
-    <a class="btn sm pr" href="/admin/licensing/supportquery/{{ t.q.id }}/change/">Reply</a>
+    <a class="btn sm pr" href="/control/support/{{ t.q.id }}/">Reply</a>
    </div>
    {% elif t.kind == "backup" %}
    <div class="todo">
@@ -58,7 +59,7 @@
   <h2 style="margin-bottom:12px">Quick actions</h2>
   <div style="display:grid;gap:8px">
    <a href="/control/gyms/new/" class="box" style="color:inherit;border:1px solid #E2E0EE;background:#fff"><b>Add a new gym</b><div class="small muted">Licence key + owner setup code</div></a>
-   <a href="/control/gyms/?f=soon" class="box" style="color:inherit;border:1px solid #E2E0EE;background:#fff"><b>Renew a licence</b><div class="small muted">Gyms ending in the next 30 days</div></a>
+   <a href="/control/money/#pay" class="box" style="color:inherit;border:1px solid #E2E0EE;background:#fff"><b>Record a payment</b><div class="small muted">Cash / UPI from a gym, extends the licence</div></a>
    <a href="/control/gyms/" class="box" style="color:inherit;border:1px solid #E2E0EE;background:#fff"><b>New owner setup code</b><div class="small muted">Open the gym, then “New owner setup code”</div></a>
   </div>
   <h2 style="margin:20px 0 10px">Recent activity</h2>

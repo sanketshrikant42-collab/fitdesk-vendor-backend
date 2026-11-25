@@ -26,6 +26,18 @@ from . import services as S
 LOGIN_TRIES = 5            # wrong passwords per address ...
 LOGIN_WINDOW = 15 * 60     # ... within this many seconds, then wait
 RENEW_MONTHS = [1, 3, 6, 12, 24]
+PAY_MODES = ["UPI", "Cash", "Bank transfer", "Cheque"]
+INVOICE_SALT = "crestline-invoice"
+INVOICE_LINK_DAYS = 90
+
+
+def _money(v):
+    from decimal import Decimal, InvalidOperation
+    try:
+        d = Decimal(str(v or "").replace(",", "").replace("₹", "").strip())
+    except InvalidOperation:
+        return None
+    return d.quantize(Decimal("0.01")) if d > 0 else None
 
 
 def owner_required(view):
@@ -121,15 +133,23 @@ def logout_view(request):
 
 # --- pages -----------------------------------------------------------------------------------
 
-def _nav(request):
-    t = S.today_summary()
-    return t
+def nav_badges():
+    from licensing.models import SupportQuery
+    rows = S.gym_rows()
+    try:
+        hw = S.warnings_count()
+    except Exception:                      # noqa: BLE001 - a badge must never break a page
+        hw = 0
+    return {"ending_soon": sum(1 for r in rows if r["soon"] and not r["is_test"]),
+            "open_support": SupportQuery.objects.filter(status=SupportQuery.STATUS_OPEN).count(),
+            "health_warn": hw}
 
 
 @owner_required
 def today_view(request):
     s = S.today_summary()
-    return render(request, "control_panel/today.html", {"s": s, "nav": "today", "badges": s,
+    s["money"] = S.money_summary()
+    return render(request, "control_panel/today.html", {"s": s, "nav": "today", "badges": nav_badges(),
                                                          "hour": timezone.localtime(timezone=S.IST).hour})
 
 
@@ -137,11 +157,14 @@ def today_view(request):
 def gyms_view(request, client_id=None):
     q, filt = request.GET.get("q", ""), request.GET.get("f", "")
     rows = S.gym_rows(q, filt)
-    ctx = {"rows": rows, "q": q, "f": filt, "nav": "gyms", "badges": S.today_summary(),
+    ctx = {"rows": rows, "q": q, "f": filt, "nav": "gyms", "badges": nav_badges(),
            "renew_months": RENEW_MONTHS, "plans": Plan.objects.filter(status=Plan.STATUS_ACTIVE)}
     if client_id is not None:
         c = get_object_or_404(Client, pk=client_id)
-        ctx.update({"sel": c, "d": S.gym_detail(c), "reveal": _pop_reveal(request)})
+        from .models import GymBilling
+        ctx.update({"sel": c, "d": S.gym_detail(c), "reveal": _pop_reveal(request),
+                    "billing": GymBilling.objects.filter(client=c).first(),
+                    "payments": list(c.vendor_payments.all()[:10])})
         if ctx["d"]["lic"]:
             ctx["wa_key"] = wa_link(c.phone, handover_text(c, ctx["d"]["lic"].key, (ctx["reveal"] or {}).get("code")))
     return render(request, "control_panel/gyms.html", ctx)
@@ -239,6 +262,12 @@ def gym_licence(request, client_id):
     if plan:
         lic.plan = plan
     lic.save(update_fields=["max_devices", "plan"])
+    from .models import GymBilling
+    b = GymBilling.for_client(c)
+    b.yearly_price = _money(request.POST.get("yearly_price"))
+    b.launch_offer = request.POST.get("launch_offer") == "on"
+    b.gstin = request.POST.get("gstin", "").strip().upper()[:20]
+    b.save()
     _audit("licence_settings_changed", c, lic, request, old=old,
            new={"max_devices": lic.max_devices, "plan": lic.plan.plan_id if lic.plan_id else None})
     messages.success(request, "Licence settings saved.")
@@ -267,7 +296,7 @@ def device_status(request, client_id, device_id):
 def add_gym(request):
     step = request.GET.get("step", "1")
     draft = request.session.get("cp_new_gym", {})
-    ctx = {"nav": "add", "badges": S.today_summary(), "draft": draft, "err": "",
+    ctx = {"nav": "add", "badges": nav_badges(), "draft": draft, "err": "",
            "plans": Plan.objects.filter(status=Plan.STATUS_ACTIVE), "renew_months": RENEW_MONTHS}
     if request.method == "POST" and request.POST.get("step") == "1":
         p = request.POST
@@ -300,8 +329,17 @@ def add_gym(request):
             lic.save()
             GymProfile.for_client(c)
             _, code = OwnerSetupCode.issue(c, created_by=f"control_panel:{request.user.username}")
+            from .models import GymBilling
+            price = _money(p.get("price"))
+            GymBilling.objects.create(client=c, yearly_price=price, launch_offer=p.get("launch_offer") == "on")
             _audit("gym_created", c, lic, request, plan=plan.plan_id, months=months, max_devices=maxd,
-                   price=p.get("price", ""))
+                   price=str(price or ""))
+            if p.get("paid_now") == "on" and price:
+                pay = S.record_payment(c, price, p.get("mode") if p.get("mode") in PAY_MODES else "UPI", S.today(),
+                                       months=0, reference=p.get("reference", ""), by=request.user.username,
+                                       note="New licence")
+                pay.period_from, pay.period_to, pay.months = S.today(), lic.expiry_date, months
+                pay.save(update_fields=["period_from", "period_to", "months"])
         request.session.pop("cp_new_gym", None)
         _reveal(request, code=code, what="new")
         return redirect(f"/control/gyms/new/done/{c.id}/")
@@ -317,6 +355,215 @@ def add_gym_done(request, client_id):
     rev = _pop_reveal(request)
     code = (rev or {}).get("code")
     return render(request, "control_panel/add_gym.html", {
-        "nav": "add", "badges": S.today_summary(), "step": "3", "c": c, "lic": lic, "code": code,
+        "nav": "add", "badges": nav_badges(), "step": "3", "c": c, "lic": lic, "code": code,
         "wa": wa_link(c.phone, handover_text(c, lic.key, code)), "text": handover_text(c, lic.key, code),
         "app_address": app_address()})
+
+
+# --- renewals & money (Phase 2) ----------------------------------------------------------------
+
+def invoice_link(request, p):
+    """Short public link (/i/<code>, 90 days) the owner can open on WhatsApp."""
+    from django.core import signing
+    from gym_core.models import ShortLink
+    from gym_core.services import public_base
+    from .invoice import invoice_filename
+    token = signing.dumps({"p": p.id}, salt=INVOICE_SALT)
+    link = ShortLink.make("i", p.client, f"pay:{p.id}", token, invoice_filename(p))
+    return f"{public_base(request)}/i/{link.code}"
+
+
+def invoice_text(p, link):
+    return "\n".join([f"Hello {p.client.owner_name},", "",
+                      f"Thank you! We've received {S.format_rupees(p.amount)} for FitDesk Pro ({p.client.gym_name})."
+                      + (f" Your licence is now valid until {p.period_to:%d %b %Y}." if p.period_to else ""),
+                      "", f"Invoice {p.invoice_no}: {link}", "", "– Crestline Technologies"])
+
+
+@owner_required
+def money_view(request):
+    from .models import GymBilling, VendorPayment
+    if request.method == "POST":
+        c = get_object_or_404(Client, pk=request.POST.get("client") or 0)
+        amount = _money(request.POST.get("amount"))
+        mode = request.POST.get("mode")
+        try:
+            months = int(request.POST.get("months", "0"))
+        except ValueError:
+            months = -1
+        from datetime import date as _d
+        try:
+            paid_on = _d.fromisoformat(request.POST.get("paid_on") or S.today().isoformat())
+        except ValueError:
+            paid_on = None
+        if not amount or mode not in PAY_MODES or months not in [0] + RENEW_MONTHS or not paid_on or paid_on > S.today():
+            messages.error(request, "Check the amount, mode, date (not in the future) and how long to extend.")
+            return redirect(f"/control/money/?gym={c.id}#pay")
+        if months and c.current_license is None:
+            messages.error(request, "This gym has no licence to extend.")
+            return redirect(f"/control/money/?gym={c.id}#pay")
+        p = S.record_payment(c, amount, mode, paid_on, months=months, reference=request.POST.get("reference", "").strip(),
+                             note=request.POST.get("note", "").strip(), by=request.user.username)
+        msg = f"Saved {S.format_rupees(amount)} from {c.gym_name} · invoice {p.invoice_no}"
+        if p.period_to:
+            msg += f" · licence now valid until {p.period_to:%d %b %Y}"
+        messages.success(request, msg + ".")
+        if request.POST.get("send") == "on":
+            _reveal(request, what="invoice", wa=wa_link(c.phone, invoice_text(p, invoice_link(request, p))),
+                    owner=c.owner_name, invoice=p.invoice_no)
+        return redirect("/control/money/")
+    m = S.money_summary()
+    gyms = [r for r in S.gym_rows() if r["lic"]]
+    pre = request.GET.get("gym")
+    pre_c = Client.objects.filter(pk=pre).first() if pre and pre.isdigit() else None
+    pre_price = getattr(GymBilling.objects.filter(client=pre_c).first(), "yearly_price", None) if pre_c else None
+    return render(request, "control_panel/money.html", {
+        "nav": "money", "badges": nav_badges(), "m": m, "gyms": gyms, "pre": pre_c, "pre_price": pre_price,
+        "modes": PAY_MODES, "renew_months": RENEW_MONTHS, "today": S.today(), "reveal": _pop_reveal(request)})
+
+
+@owner_required
+@require_POST
+def money_remind(request, client_id):
+    """Logs the reminder, then opens WhatsApp with the message ready."""
+    from django.http import HttpResponseRedirect
+    from .models import GymBilling
+    c, lic = _gym_and_licence(client_id)
+    b = GymBilling.objects.filter(client=c).first()
+    _audit("renewal_reminder_sent", c, lic, request, ends=lic.expiry_date.isoformat())
+    return HttpResponseRedirect(wa_link(c.phone, S.renewal_text(c, lic, b.yearly_price if b else None)))
+
+
+@owner_required
+def payment_invoice(request, payment_id):
+    from django.http import HttpResponse
+    from .invoice import invoice_filename, invoice_pdf
+    from .models import GymBilling, VendorPayment
+    p = get_object_or_404(VendorPayment.objects.select_related("client"), pk=payment_id)
+    resp = HttpResponse(invoice_pdf(p, GymBilling.objects.filter(client=p.client).first()), content_type="application/pdf")
+    resp["Content-Disposition"] = f'inline; filename="{invoice_filename(p)}"'
+    return resp
+
+
+def invoice_shared(request, token, name=""):
+    """The invoice link sent to the owner on WhatsApp (no sign-in)."""
+    from django.core import signing
+    from django.http import HttpResponse, JsonResponse
+    from .invoice import invoice_filename, invoice_pdf
+    from .models import GymBilling, VendorPayment
+    try:
+        data = signing.loads(token, salt=INVOICE_SALT, max_age=INVOICE_LINK_DAYS * 86400)
+    except signing.BadSignature:
+        return JsonResponse({"ok": False, "message": "This invoice link has expired. Ask Crestline to send it again."}, status=404)
+    p = VendorPayment.objects.select_related("client").filter(pk=data.get("p")).first()
+    if p is None:
+        return JsonResponse({"ok": False, "message": "Invoice not found."}, status=404)
+    resp = HttpResponse(invoice_pdf(p, GymBilling.objects.filter(client=p.client).first()), content_type="application/pdf")
+    resp["Content-Disposition"] = f'{"inline" if request.GET.get("download") != "1" else "attachment"}; filename="{invoice_filename(p)}"'
+    resp["Cache-Control"] = "private, no-store"
+    return resp
+
+
+def invoice_short(request, code):
+    from gym_auto.views import _short
+    return _short(request, code, "i", invoice_shared)
+
+
+# --- support (Phase 3) -------------------------------------------------------------------------
+
+@owner_required
+def support_view(request, query_id=None):
+    from licensing.models import SupportQuery
+    tab = request.GET.get("tab", "open")
+    if tab not in ("open", "call", "done"):
+        tab = "open"
+    rows, counts = S.support_lists(tab)
+    ctx = {"nav": "support", "badges": nav_badges(), "rows": rows, "counts": counts, "tab": tab}
+    if query_id is not None:
+        q = get_object_or_404(SupportQuery.objects.select_related("client"), pk=query_id)
+        from .models import SupportMeta
+        ctx.update({"sel": q, "meta": SupportMeta.objects.filter(query=q).first(),
+                    "wa": wa_link(q.client.phone, f"Hello {q.client.owner_name}, this is Crestline about your question “{q.subject}”.")})
+    elif rows:
+        return redirect(f"/control/support/{rows[0]['q'].id}/?tab={tab}")
+    return render(request, "control_panel/support.html", ctx)
+
+
+@owner_required
+@require_POST
+def support_action(request, query_id):
+    from licensing.models import SupportQuery
+    from .models import SupportMeta
+    q = get_object_or_404(SupportQuery.objects.select_related("client"), pk=query_id)
+    meta = SupportMeta.for_query(q)
+    act = request.POST.get("act")
+    tab = request.POST.get("tab", "open")
+    if act == "reply":
+        text = request.POST.get("text", "").strip()
+        if not text:
+            messages.error(request, "Write a reply first.")
+            return redirect(f"/control/support/{q.id}/?tab={tab}")
+        stamp = timezone.localtime(timezone=S.IST).strftime("%d %b %Y, %I:%M %p")
+        q.admin_notes = (q.admin_notes.rstrip() + "\n\n" if q.admin_notes.strip() else "") + f"[{stamp}] Crestline: {text}"
+        q.save(update_fields=["admin_notes"])
+        meta.last_reply_at = timezone.now()
+        if request.POST.get("close") == "on":
+            q.mark_resolved()
+            meta.call_back = False
+        meta.save()
+        _audit("support_replied", q.client, None, request, query=q.id, closed=q.status == SupportQuery.STATUS_RESOLVED)
+        messages.success(request, "Reply saved. The gym sees it in FitDesk's Support screen."
+                         + (" Question closed." if q.status == SupportQuery.STATUS_RESOLVED else ""))
+    elif act == "note":
+        meta.private_note = request.POST.get("note", "").strip()
+        meta.save(update_fields=["private_note"])
+        messages.success(request, "Private note saved.")
+    elif act == "callback":
+        meta.call_back = not meta.call_back
+        meta.save(update_fields=["call_back"])
+        messages.success(request, "Moved to Call back." if meta.call_back else "Removed from Call back.")
+    elif act == "close":
+        q.mark_resolved()
+        meta.call_back = False
+        meta.save(update_fields=["call_back"])
+        _audit("support_closed", q.client, None, request, query=q.id)
+        messages.success(request, "Question closed.")
+    elif act == "reopen":
+        q.status, q.resolved_at = SupportQuery.STATUS_OPEN, None
+        q.save(update_fields=["status", "resolved_at"])
+        messages.success(request, "Question open again.")
+    else:
+        raise Http404
+    new_tab = "done" if q.status == SupportQuery.STATUS_RESOLVED else ("call" if meta.call_back else "open")
+    return redirect(f"/control/support/{q.id}/?tab={new_tab}")
+
+
+# --- health (Phase 3) --------------------------------------------------------------------------
+
+@owner_required
+def health_view(request):
+    return render(request, "control_panel/health.html", {"nav": "health", "badges": nav_badges(), "h": S.health_summary()})
+
+
+@owner_required
+@require_POST
+def health_tool(request):
+    import io
+    from django.core.management import call_command
+    tool = request.POST.get("tool")
+    out = io.StringIO()
+    try:
+        if tool == "backup":
+            call_command("backup_now", reason="manual", stdout=out)
+            messages.success(request, "Server backup made and checked.")
+        elif tool == "reminders":
+            call_command("run_daily_jobs", stdout=out)
+            messages.success(request, "Today's reminder lists made for every gym (already-made items aren't repeated).")
+        else:
+            raise Http404
+        _audit("server_tool_run", None, None, request, tool=tool)
+    except Http404:
+        raise
+    except Exception as e:                  # noqa: BLE001 - show the reason instead of a server error page
+        messages.error(request, f"That didn't work: {str(e)[:200]}")
+    return redirect("/control/health/")

@@ -1,0 +1,65 @@
+{% extends "control_panel/base.html" %}
+{% block title %}Support{% endblock %}
+{% block main %}
+<div class="head"><div><h1>Support</h1><p class="sub">Questions gyms send from FitDesk. Your reply shows up in the gym's Support screen.</p></div></div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+ <section class="card" style="flex:2 1 340px;min-width:0;padding:0;overflow:hidden">
+  <div style="display:flex;gap:6px;padding:12px;border-bottom:1px solid #EEEDF5;flex-wrap:wrap">
+   <a class="btn sm {% if tab == 'open' %}pr{% endif %}" href="/control/support/?tab=open">Open · {{ counts.open }}</a>
+   <a class="btn sm {% if tab == 'call' %}pr{% endif %}" href="/control/support/?tab=call">Call back · {{ counts.call }}</a>
+   <a class="btn sm {% if tab == 'done' %}pr{% endif %}" href="/control/support/?tab=done">Done · {{ counts.done }}</a>
+  </div>
+  {% for r in rows %}
+   <a href="/control/support/{{ r.q.id }}/?tab={{ tab }}" style="display:block;color:inherit;padding:14px 16px;border-bottom:1px solid #EEEDF5;{% if sel and sel.id == r.q.id %}background:#F3F1FE{% endif %}">
+    <div style="display:flex;justify-content:space-between;gap:8px"><b>{{ r.q.client.gym_name }}</b>
+     <span class="small" style="{% if r.bucket != 'done' and r.hours >= 24 %}color:#C42B2B;font-weight:600{% else %}color:#5F5C78{% endif %}">{% if r.hours < 1 %}just now{% elif r.hours < 48 %}{{ r.hours }} h{% else %}{{ r.q.created_at|date:"j M" }}{% endif %}</span></div>
+    <div style="font-size:13px">{{ r.q.subject|truncatechars:70 }}</div>
+    <div class="small muted">{% if r.m.last_reply_at %}replied {{ r.m.last_reply_at|timesince }} ago{% else %}not replied yet{% endif %}</div>
+   </a>
+  {% empty %}
+   <div class="muted" style="padding:30px 16px;text-align:center">{% if tab == 'open' %}No open questions.{% elif tab == 'call' %}Nobody to call back.{% else %}Nothing closed yet.{% endif %}</div>
+  {% endfor %}
+ </section>
+
+ {% if sel %}
+ <section class="card" style="flex:3 1 480px;min-width:0;padding:20px">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+   <div><h2 style="font-size:18px">{{ sel.subject }}</h2>
+    <div class="small muted" style="margin-top:2px"><a href="/control/gyms/{{ sel.client.id }}/">{{ sel.client.gym_name }}</a> · {{ sel.client.owner_name }} · {{ sel.client.phone }} · sent {{ sel.created_at|date:"j M Y, g:i a" }}
+     {% if sel.status == 'resolved' %} · <span class="chip ok">Closed {{ sel.resolved_at|date:"j M" }}</span>{% elif meta.call_back %} · <span class="chip warn">Call back</span>{% endif %}</div></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sm" href="tel:{{ sel.client.phone }}">Call</a><a class="btn sm" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a></div>
+  </div>
+
+  <div class="box" style="font-size:13.5px;line-height:1.55;white-space:pre-line;margin-bottom:12px">{{ sel.message }}</div>
+  {% if sel.admin_notes %}<div style="background:#EDEAFE;border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.55;margin:0 0 12px 32px;white-space:pre-line"><b class="small" style="color:#4B3FD6">Replies the gym can see</b>
+{{ sel.admin_notes }}</div>{% endif %}
+
+  {% if sel.status != 'resolved' %}
+  <form method="post" action="/control/support/{{ sel.id }}/act/">{% csrf_token %}
+   <input type="hidden" name="act" value="reply"><input type="hidden" name="tab" value="{{ tab }}">
+   <label class="f">Reply to the gym<textarea name="text" rows="4" placeholder="Hi {{ sel.client.owner_name }}, …"></textarea></label>
+   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="close" checked style="width:16px;height:16px"> Close the question after replying</label>
+    <button class="btn pr" type="submit">Send reply</button>
+   </div>
+  </form>
+  {% endif %}
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+   {% if sel.status != 'resolved' %}
+   <form method="post" action="/control/support/{{ sel.id }}/act/">{% csrf_token %}<input type="hidden" name="act" value="callback"><button class="btn sm" type="submit">{% if meta.call_back %}Remove from Call back{% else %}Mark “call back”{% endif %}</button></form>
+   <form method="post" action="/control/support/{{ sel.id }}/act/">{% csrf_token %}<input type="hidden" name="act" value="close"><button class="btn sm" type="submit">Close without reply</button></form>
+   {% else %}
+   <form method="post" action="/control/support/{{ sel.id }}/act/">{% csrf_token %}<input type="hidden" name="act" value="reopen"><button class="btn sm" type="submit">Open again</button></form>
+   {% endif %}
+  </div>
+
+  <form method="post" action="/control/support/{{ sel.id }}/act/" style="margin-top:18px">{% csrf_token %}<input type="hidden" name="act" value="note">
+   <label class="f">Private note (only you see this)<textarea name="note" rows="3" placeholder="e.g. Called on 25 Nov, will update next week">{{ meta.private_note }}</textarea></label>
+   <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn sm" type="submit">Save note</button></div>
+  </form>
+ </section>
+ {% endif %}
+</div>
+{% endblock %}

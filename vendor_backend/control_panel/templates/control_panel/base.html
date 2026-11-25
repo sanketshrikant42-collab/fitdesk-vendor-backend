@@ -17,7 +17,6 @@ a{color:#4B3FD6;text-decoration:none}a:hover{color:#3A2FB8}
 .nav .brand b{color:#fff;display:block}.nav .brand small{color:#9E9BBF;font-size:12px}
 .nav a{color:#C9C6E6;padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
 .nav a:hover{color:#fff;background:#1F1C3D}.nav a.on{background:#2A2650;color:#fff;font-weight:600}
-.nav a.soon{color:#7C79A0}.nav a.soon:hover{background:none;color:#7C79A0;cursor:default}
 .nav .cnt{background:#C42B2B;color:#fff;border-radius:99px;font-size:11px;padding:1px 8px;font-weight:700}.nav .cnt.w{background:#B45309}
 .nav .add{background:#6D5DF6;color:#fff;justify-content:center;font-weight:600;margin-top:auto}.nav .add:hover{background:#5B4BE8}
 .nav form{margin:0}.nav .who{color:#9E9BBF;font-size:12px;padding:14px 8px 0;display:flex;justify-content:space-between;align-items:center}
@@ -69,9 +68,9 @@ details.act[open]{padding-bottom:14px}
   <div class="brand"><div class="logo">C</div><div><b>Crestline</b><small>FitDesk Pro control panel</small></div></div>
   <a href="/control/" class="{% if nav == 'today' %}on{% endif %}">Today</a>
   <a href="/control/gyms/" class="{% if nav == 'gyms' %}on{% endif %}">Gyms &amp; licences{% if badges.ending_soon %}<span class="cnt w">{{ badges.ending_soon }}</span>{% endif %}</a>
-  <a class="soon" title="Coming in the next phase">Renewals &amp; money <small>soon</small></a>
-  <a href="/admin/licensing/supportquery/" title="Opens the old admin until the Support page is built">Support{% if badges.open_support %}<span class="cnt">{{ badges.open_support }}</span>{% endif %}</a>
-  <a class="soon" title="Coming in the next phase">Health &amp; backups <small>soon</small></a>
+  <a href="/control/money/" class="{% if nav == 'money' %}on{% endif %}">Renewals &amp; money</a>
+  <a href="/control/support/" class="{% if nav == 'support' %}on{% endif %}">Support{% if badges.open_support %}<span class="cnt">{{ badges.open_support }}</span>{% endif %}</a>
+  <a href="/control/health/" class="{% if nav == 'health' %}on{% endif %}">Health &amp; backups{% if badges.health_warn %}<span class="cnt w">{{ badges.health_warn }}</span>{% endif %}</a>
   <div style="flex:1"></div>
   <a href="/control/gyms/new/" class="add">+ Add a gym</a>
   <div class="who"><span>{{ request.user.username }}</span><form method="post" action="/control/logout/">{% csrf_token %}<button type="submit">Sign out</button></form></div>

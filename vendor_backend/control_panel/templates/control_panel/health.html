@@ -1,0 +1,54 @@
+{% extends "control_panel/base.html" %}
+{% block title %}Health &amp; backups{% endblock %}
+{% block main %}
+<div class="head"><div><h1>Health &amp; backups</h1><p class="sub">Is everything running? Green means nothing to do.</p></div></div>
+
+<div class="kpis">
+ <div class="card kpi"><div style="display:flex;gap:8px;align-items:center;font-weight:600"><span style="width:10px;height:10px;border-radius:50%;background:#16A34A"></span>Server</div><div class="small muted" style="margin-top:6px">Up · database answering</div></div>
+ <div class="card kpi {% if not h.job_ok %}warn{% endif %}"><div style="display:flex;gap:8px;align-items:center;font-weight:600"><span style="width:10px;height:10px;border-radius:50%;background:{% if h.job_ok %}#16A34A{% else %}#D97706{% endif %}"></span>Nightly job</div>
+  <div class="small s muted" style="margin-top:6px">{% if h.last_run %}Last ran {{ h.last_run.ran_at|date:"j M, g:i a" }}{% else %}Hasn't run yet{% endif %}{% if not h.job_ok %} · expected every day at 6:00 am{% endif %}</div></div>
+ <div class="card kpi {% if not h.srv_ok %}warn{% endif %}"><div style="display:flex;gap:8px;align-items:center;font-weight:600"><span style="width:10px;height:10px;border-radius:50%;background:{% if h.srv_ok %}#16A34A{% else %}#D97706{% endif %}"></span>Server backup</div>
+  <div class="small s muted" style="margin-top:6px">{% if h.last_srv %}{{ h.last_srv.started_at|date:"j M, g:i a" }} · {{ h.last_srv.status }}{% if h.last_srv.size_bytes %} · {{ h.last_srv.size_bytes|filesizeformat }}{% endif %}{% else %}None yet{% endif %}</div></div>
+ <div class="card kpi {% if h.late_n %}warn{% endif %}"><div style="display:flex;gap:8px;align-items:center;font-weight:600"><span style="width:10px;height:10px;border-radius:50%;background:{% if h.late_n %}#D97706{% else %}#16A34A{% endif %}"></span>Gym backups (desktop)</div>
+  <div class="small s muted" style="margin-top:6px">{% if h.late_n %}{{ h.late_n }} gym{{ h.late_n|pluralize }} without a backup for 2+ days{% else %}All recent{% endif %}</div></div>
+</div>
+
+<section class="card" style="margin-bottom:16px;overflow-x:auto">
+ <h2 style="margin-bottom:6px">Each gym</h2>
+ <table>
+  <thead><tr><th>Gym</th><th>App</th><th>Last seen</th><th>Last cloud backup</th><th>WhatsApp</th><th>Email</th></tr></thead>
+  <tbody>
+  {% for r in h.rows %}
+   <tr {% if r.late %}style="background:#FFF7EC"{% endif %}>
+    <td><a href="/control/gyms/{{ r.c.id }}/" style="color:inherit"><b>{{ r.c.gym_name }}</b></a>{% if r.is_test %} <span class="chip info">Test</span>{% endif %}</td>
+    <td class="small">{{ r.app }}</td>
+    <td class="small">{% if r.last_seen %}{{ r.last_seen|timesince }} ago{% else %}<span class="muted">never</span>{% endif %}</td>
+    <td class="small">{% if r.backup_obj %}<span style="{% if r.late %}color:#8A4A06;font-weight:600{% elif r.backup_obj.status == 'available' %}color:#157F3D;font-weight:600{% endif %}">{{ r.backup_obj.created_at|date:"j M, g:i a" }}</span> · {{ r.backup_obj.get_status_display }}{% elif r.old_app %}<span style="color:#8A4A06;font-weight:600">never</span>{% elif r.new_app %}<span class="muted">not needed (new app: in the server backup)</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="small">{{ r.wa }}</td>
+    <td class="small">{{ r.email }}</td>
+   </tr>
+  {% endfor %}
+  </tbody>
+ </table>
+</section>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap">
+ <section class="card" style="flex:1 1 380px">
+  <h2 style="margin-bottom:10px">Problems in the last 7 days</h2>
+  <div class="small" style="display:grid;gap:9px">
+   {% for p in h.problems %}<div style="display:flex;gap:10px"><span style="color:#8A4A06;font-weight:600;flex:none;width:52px">{{ p.at|date:"j M" }}</span><span>{{ p.text }}</span></div>
+   {% empty %}<div class="muted">None. Everything ran.</div>{% endfor %}
+  </div>
+ </section>
+ <section class="card" style="flex:1 1 380px">
+  <h2 style="margin-bottom:4px">Server tools</h2>
+  <p class="small muted" style="margin:0 0 12px">Both are safe to run any time; the nightly job does the same at 6:00 am.</p>
+  <div class="grid2">
+   <form method="post" action="/control/health/tool/">{% csrf_token %}<input type="hidden" name="tool" value="backup"><button class="btn" style="width:100%" type="submit" onclick="this.textContent='Backing up…'">Back up server now</button></form>
+   <form method="post" action="/control/health/tool/">{% csrf_token %}<input type="hidden" name="tool" value="reminders"><button class="btn" style="width:100%" type="submit" onclick="this.textContent='Working…'">Make today's reminders</button></form>
+   <a class="btn span2" href="/admin/db_backup/serverbackup/">Download or restore a server backup (old admin) ↗</a>
+  </div>
+  {% if h.last_ok_srv %}<p class="small muted" style="margin:12px 0 0">Last good server backup: {{ h.last_ok_srv.started_at|date:"j M Y, g:i a" }}{% if h.last_ok_srv.gyms %} · {{ h.last_ok_srv.gyms }} gyms{% endif %}</p>{% endif %}
+ </section>
+</div>
+{% endblock %}

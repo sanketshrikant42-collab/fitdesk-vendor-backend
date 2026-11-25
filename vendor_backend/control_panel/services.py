@@ -188,3 +188,194 @@ def activity(entries):
         out.append({"label": label, "extra": extra, "gym": a.client.gym_name if a.client_id else "",
                     "client_id": a.client_id, "at": a.created_at, "by_panel": m.get("by") == "control_panel"})
     return out
+
+
+# --- money (Phase 2) -------------------------------------------------------------------------
+
+def fy_start(d=None):
+    d = d or today()
+    return date(d.year if d.month >= 4 else d.year - 1, 4, 1)
+
+
+def fy_label(d):
+    s = fy_start(d)
+    return f"{s.year}-{str(s.year + 1)[2:]}"
+
+
+def next_invoice_no(paid_on):
+    from .models import VendorPayment
+    prefix = f"CT/{fy_label(paid_on)}/"
+    nums = [int(n.rsplit("/", 1)[1]) for n in VendorPayment.objects.filter(invoice_no__startswith=prefix)
+            .values_list("invoice_no", flat=True) if n.rsplit("/", 1)[1].isdigit()]
+    return f"{prefix}{(max(nums) if nums else 0) + 1:04d}"
+
+
+def record_payment(client, amount, mode, paid_on, months=0, reference="", note="", by=""):
+    """Saves a gym's payment to Crestline and, when months > 0, extends the
+    licence (from its end date, or from today if it has ended)."""
+    from django.db import IntegrityError, transaction
+    from .models import VendorPayment
+    lic = client.current_license
+    for attempt in range(3):
+        try:
+            with transaction.atomic():
+                p = VendorPayment(client=client, license=lic, paid_on=paid_on, amount=amount, mode=mode,
+                                  reference=reference[:60], note=note[:200], months=months, created_by=by[:150],
+                                  plan_name=lic.plan.name if lic and lic.plan_id else "",
+                                  invoice_no=next_invoice_no(paid_on))
+                if lic and months:
+                    old = lic.expiry_date
+                    p.period_from = max(old, today())
+                    lic.expiry_date = renew_to(lic, months)
+                    p.period_to = lic.expiry_date
+                    lic.save(update_fields=["expiry_date"])
+                    AuditLog.record("licence_renewed", license=lic, by="control_panel", months=months,
+                                    old_expiry=old.isoformat(), new_expiry=lic.expiry_date.isoformat(), payment=p.invoice_no)
+                p.save()
+                AuditLog.record("payment_recorded", license=lic, client=client, by="control_panel",
+                                invoice=p.invoice_no, amount=str(amount), mode=mode)
+                return p
+        except IntegrityError:
+            if attempt == 2:
+                raise
+    return None
+
+
+def _months_back(n):
+    t = today()
+    out = []
+    y, m = t.year, t.month
+    for _ in range(n):
+        out.append((y, m))
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    return list(reversed(out))
+
+
+def money_summary():
+    from django.db.models import Sum
+    from .models import GymBilling, LAUNCH_OFFER_SEATS, VendorPayment
+    t = today()
+    pays = VendorPayment.objects.all()
+    month_sum = pays.filter(paid_on__year=t.year, paid_on__month=t.month).aggregate(s=Sum("amount"))["s"] or 0
+    month_n = pays.filter(paid_on__year=t.year, paid_on__month=t.month).count()
+    fy_sum = pays.filter(paid_on__gte=fy_start(t)).aggregate(s=Sum("amount"))["s"] or 0
+    prices = {b.client_id: b for b in GymBilling.objects.all()}
+    last_rem = {}
+    for a in AuditLog.objects.filter(action="renewal_reminder_sent").order_by("created_at"):
+        last_rem[a.client_id] = a.created_at
+    renewals, due = [], 0
+    for r in gym_rows():
+        if r["is_test"] or r["status"] in ("suspended", "revoked", "no_licence") or r["days_left"] is None:
+            continue
+        if -60 <= r["days_left"] <= 45:
+            b = prices.get(r["c"].id)
+            r["price"] = b.yearly_price if b else None
+            r["reminded"] = last_rem.get(r["c"].id)
+            renewals.append(r)
+            if r["days_left"] <= SOON_DAYS and r["price"]:
+                due += r["price"]
+    renewals.sort(key=lambda r: r["days_left"])
+    by_month = []
+    for y, m in _months_back(12):
+        s = pays.filter(paid_on__year=y, paid_on__month=m).aggregate(s=Sum("amount"))["s"] or 0
+        by_month.append({"label": date(y, m, 1).strftime("%b %y"), "amount": s})
+    top = max([x["amount"] for x in by_month] + [1])
+    for x in by_month:
+        x["pct"] = int(x["amount"] * 100 / top)
+    return {"month_sum": month_sum, "month_n": month_n, "fy_sum": fy_sum, "fy": fy_label(t),
+            "due": due, "due_n": sum(1 for r in renewals if 0 <= r["days_left"] <= SOON_DAYS or r["days_left"] < 0),
+            "launch_used": GymBilling.objects.filter(launch_offer=True).count(), "launch_total": LAUNCH_OFFER_SEATS,
+            "renewals": renewals, "payments": list(pays.select_related("client")[:60]), "by_month": by_month}
+
+
+def renewal_text(client, lic, price=None):
+    ends = lic.expiry_date
+    t = today()
+    when = (f"ends on {ends:%d %b %Y}" if ends >= t else f"ended on {ends:%d %b %Y}")
+    lines = [f"Hello {client.owner_name},", "",
+             f"Your FitDesk Pro licence for *{client.gym_name}* {when}."]
+    if price:
+        lines.append(f"Renewal for 1 year: *{format_rupees(price)}*.")
+    lines += ["", "Please renew so your gym software keeps working without a break. Reply here or call 84840 74959.",
+              "", "– Crestline Technologies"]
+    return "\n".join(lines)
+
+
+def format_rupees(v):
+    from .invoice import rupees
+    return rupees(v)
+
+
+# --- support (Phase 3) -------------------------------------------------------------------------
+
+def support_lists(tab):
+    from .models import SupportMeta
+    qs = SupportQuery.objects.select_related("client").order_by("-created_at")
+    metas = {m.query_id: m for m in SupportMeta.objects.all()}
+    rows = []
+    for q in qs[:300]:
+        m = metas.get(q.id)
+        cb = bool(m and m.call_back)
+        bucket = "done" if q.status == SupportQuery.STATUS_RESOLVED else ("call" if cb else "open")
+        rows.append({"q": q, "m": m, "bucket": bucket, "hours": int((timezone.now() - q.created_at).total_seconds() // 3600)})
+    counts = {k: sum(1 for r in rows if r["bucket"] == k) for k in ("open", "call", "done")}
+    return [r for r in rows if r["bucket"] == tab], counts
+
+
+# --- health (Phase 3) --------------------------------------------------------------------------
+
+def health_summary():
+    from db_backup.models import ServerBackup
+    from gym_auto.mailer import ready as email_ready
+    from gym_auto.models import DailyRun, EmailSettings
+    from licensing.models import WhatsAppConfiguration
+    now = timezone.now()
+    last_run = DailyRun.objects.order_by("-ran_at").first()
+    last_srv = ServerBackup.objects.order_by("-started_at").first()
+    last_ok_srv = ServerBackup.objects.filter(status=ServerBackup.STATUS_OK).order_by("-started_at").first()
+    rows = gym_rows()
+    wa = {w.client_id: w for w in WhatsAppConfiguration.objects.all()}
+    em = {e.client_id: e for e in EmailSettings.objects.all()}
+    latest_backup = {}
+    for b in CloudBackup.objects.order_by("created_at"):
+        latest_backup[b.client_id] = b
+    for r in rows:
+        w = wa.get(r["c"].id)
+        r["wa"] = "Automatic (Meta)" if w and w.enabled and w.connection_status == "CONNECTED" else (
+            "Meta error" if w and w.connection_status == "ERROR" else "Links")
+        e = em.get(r["c"].id)
+        try:
+            r["email"] = "Set up" if e and email_ready(e) else "Not set"
+        except Exception:                      # noqa: BLE001 - never break the page over one gym's settings
+            r["email"] = "Not set"
+        r["backup_obj"] = latest_backup.get(r["c"].id)
+        r["late"] = backup_late(r, now)
+    week = now - timedelta(days=7)
+    problems = []
+    for b in CloudBackup.objects.filter(created_at__gte=week, status__in=[CloudBackup.STATUS_FAILED, CloudBackup.STATUS_CORRUPT]).select_related("client"):
+        problems.append({"at": b.created_at, "text": f"{b.client.gym_name}: cloud backup {b.get_status_display().lower()}"})
+    for s in ServerBackup.objects.filter(started_at__gte=week, status=ServerBackup.STATUS_FAILED):
+        problems.append({"at": s.started_at, "text": f"Server backup failed{(': ' + s.error[:120]) if getattr(s, 'error', '') else ''}"})
+    run_days = set(DailyRun.objects.filter(ran_at__gte=week).values_list("date", flat=True))
+    first = DailyRun.objects.order_by("date").values_list("date", flat=True).first()
+    for i in range(1, 7):
+        d = today() - timedelta(days=i)
+        if first and d > first and d not in run_days:          # only days after the job first ran
+            problems.append({"at": timezone.make_aware(timezone.datetime(d.year, d.month, d.day, 6, 0), IST),
+                             "text": f"Nightly job didn't run on {d:%d %b}"})
+    problems.sort(key=lambda p: p["at"], reverse=True)
+    fresh = timedelta(hours=26)
+    return {
+        "job_ok": bool(last_run and now - last_run.ran_at < fresh), "last_run": last_run,
+        "srv_ok": bool(last_srv and last_srv.status == ServerBackup.STATUS_OK and now - last_srv.started_at < fresh),
+        "last_srv": last_srv, "last_ok_srv": last_ok_srv,
+        "late_n": sum(1 for r in rows if r["late"]), "rows": rows, "problems": problems,
+    }
+
+
+def warnings_count():
+    """For the menu badge on Health & backups."""
+    h = health_summary()
+    return h["late_n"] + (0 if h["job_ok"] else 1) + (0 if h["srv_ok"] else 1)

@@ -5,7 +5,7 @@
 
 <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
  <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '1' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '1' %}style="color:#4B3FD6"{% endif %}>1 · Gym &amp; owner</b>{% if step != '1' %} <span class="chip ok">done</span>{% endif %}<div class="small muted">Name, owner, mobile, city</div></div>
- <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '2' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '2' %}style="color:#4B3FD6"{% endif %}>2 · Plan &amp; licence</b>{% if step == '3' %} <span class="chip ok">done</span>{% endif %}<div class="small muted">Plan, length, desktop PCs</div></div>
+ <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '2' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '2' %}style="color:#4B3FD6"{% endif %}>2 · Plan &amp; licence</b>{% if step == '3' %} <span class="chip ok">done</span>{% endif %}<div class="small muted">Plan, length, price, first payment</div></div>
  <div class="card" style="flex:1 1 200px;padding:12px 14px;{% if step == '3' %}border:2px solid #6D5DF6{% endif %}"><b {% if step == '3' %}style="color:#4B3FD6"{% endif %}>3 · Hand-over</b><div class="small muted">Licence key + owner setup code</div></div>
 </div>
 
@@ -33,9 +33,16 @@
   <label class="f">Plan<select name="plan">{% for p in plans %}<option value="{{ p.pk }}" {% if p.plan_id == 'premium' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
   <label class="f">Licence runs for<select name="months">{% for m in renew_months %}<option value="{{ m }}" {% if m == 12 %}selected{% endif %}>{% if m == 1 %}1 month{% elif m == 12 %}1 year{% elif m == 24 %}2 years{% else %}{{ m }} months{% endif %}</option>{% endfor %}</select></label>
   <label class="f">Desktop PCs allowed (v1.2.0)<input name="max_devices" type="number" min="1" max="20" value="1"></label>
-  <label class="f">Price agreed ₹<input name="price" inputmode="decimal" placeholder="e.g. 18000 (launch offer) or 25000"></label>
+  <label class="f">Yearly price ₹<input name="price" inputmode="decimal" placeholder="e.g. 18000 (launch offer) or 25000"></label>
+  <label class="span2" style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="launch_offer" style="width:16px;height:16px"> Launch offer (one of the first 50 gyms)</label>
  </div>
- <p class="small muted" style="margin:12px 0 0">The price is noted in the gym's history for now; payments and invoices come with the Renewals &amp; money page.</p>
+ <div class="box" style="margin-top:14px">
+  <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600"><input type="checkbox" name="paid_now" style="width:16px;height:16px"> Paid now: record the yearly price as the first payment (makes an invoice)</label>
+  <div class="grid2" style="margin-top:10px">
+   <label class="f">Mode<select name="mode"><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Cheque</option></select></label>
+   <label class="f">UPI / cheque reference<input name="reference" placeholder="Optional"></label>
+  </div>
+ </div>
  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><a class="btn" href="/control/gyms/new/?step=1">Back</a><button class="btn pr" type="submit">Create gym &amp; licence</button></div>
 </form>
 

@@ -539,7 +539,8 @@ def support(request):
     if request.staff.role != "owner":
         qs = qs.filter(message__contains=f"— {request.staff.name} ({request.staff.role}) · {request.staff.phone}")
     return ok({"tickets": [{"id": q.id, "subject": q.subject, "status": q.status, "created_at": q.created_at.isoformat(),
-                            "resolved_at": q.resolved_at.isoformat() if q.resolved_at else None} for q in qs[:50]]})
+                            "resolved_at": q.resolved_at.isoformat() if q.resolved_at else None,
+                            "reply": q.admin_notes or ""} for q in qs[:50]]})
 
 
 def test_console(request):

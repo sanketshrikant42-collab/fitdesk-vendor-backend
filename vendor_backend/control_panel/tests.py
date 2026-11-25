@@ -190,3 +190,159 @@ class AddGymTests(Base):
 
     def test_step2_without_step1_restarts(self):
         self.assertEqual(self.client.get("/control/gyms/new/?step=2")["Location"], "/control/gyms/new/")
+
+
+class MoneyTests(Base):
+    def pay(self, **kw):
+        data = {"client": self.gym.id, "amount": "25,000", "mode": "UPI", "months": "12", "reference": "4471",
+                "paid_on": S.today().isoformat(), "send": "on"}
+        data.update(kw)
+        return self.client.post("/control/money/", data, follow=True)
+
+    def test_record_payment_renews_and_makes_invoice(self):
+        from .models import VendorPayment
+        end = self.lic.expiry_date
+        r = self.pay()
+        p = VendorPayment.objects.get()
+        self.lic.refresh_from_db()
+        self.assertEqual(p.amount, 25000)
+        self.assertEqual(p.period_from, end)
+        self.assertEqual(p.period_to, self.lic.expiry_date)
+        self.assertEqual(self.lic.expiry_date, S.renew_to(License(expiry_date=end), 12))
+        self.assertTrue(p.invoice_no.startswith(f"CT/{S.fy_label(S.today())}/0001"))
+        self.assertContains(r, "Send on WhatsApp")
+        self.assertIn("wa.me/919876543210", r.context["reveal"]["wa"])
+        self.assertTrue(AuditLog.objects.filter(action="payment_recorded").exists())
+        # second payment gets the next number
+        self.pay(months="0", amount="500")
+        self.assertTrue(VendorPayment.objects.filter(invoice_no__endswith="/0002").exists())
+
+    def test_bad_payment_refused(self):
+        from .models import VendorPayment
+        self.pay(amount="0")
+        self.pay(mode="Bitcoin")
+        self.pay(paid_on=(S.today() + timedelta(days=3)).isoformat())
+        self.pay(months="7")
+        self.assertEqual(VendorPayment.objects.count(), 0)
+
+    def test_invoice_pdf_and_public_link(self):
+        from .models import VendorPayment
+        self.pay()
+        p = VendorPayment.objects.get()
+        r = self.client.get(f"/control/payments/{p.id}/invoice.pdf")
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertTrue(r.content.startswith(b"%PDF"))
+        wa = self.client.get("/control/money/").context  # reveal already used
+        from urllib.parse import unquote
+        self.client.logout()
+        self.assertEqual(self.client.get(f"/control/payments/{p.id}/invoice.pdf").status_code, 302)   # needs sign-in
+        from gym_core.models import ShortLink
+        code = ShortLink.objects.get(kind="i").code
+        r = self.client.get(f"/i/{code}")                                       # owner's link: no sign-in
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertIn("Invoice CT-", r["Content-Disposition"])
+        self.assertEqual(self.client.get("/i/zzzzzzz").status_code, 404)
+
+    def test_money_page_and_reminder(self):
+        from .models import GymBilling
+        GymBilling.objects.create(client=self.gym, yearly_price=25000)
+        r = self.client.get("/control/money/")
+        self.assertContains(r, "Iron Core Gym")
+        self.assertEqual(r.context["m"]["due"], 25000)
+        r = self.client.post(f"/control/money/remind/{self.gym.id}/")
+        self.assertTrue(r["Location"].startswith("https://wa.me/919876543210?text="))
+        self.assertIn("%E2%82%B925%2C000", r["Location"])                       # ₹25,000
+        self.assertTrue(AuditLog.objects.filter(action="renewal_reminder_sent").exists())
+        self.assertIsNotNone(self.client.get("/control/money/").context["m"]["renewals"][0]["reminded"])
+
+    def test_rupees(self):
+        from .invoice import rupees
+        self.assertEqual(rupees(125000), "₹1,25,000")
+        self.assertEqual(rupees("18000.50"), "₹18,000.50")
+        self.assertEqual(rupees(999), "₹999")
+
+    def test_add_gym_with_first_payment(self):
+        from .models import GymBilling, VendorPayment
+        self.client.post("/control/gyms/new/", {"step": "1", "gym_name": "Shakti", "owner_name": "Neha", "phone": "9123456789"})
+        plan = Plan.objects.get(plan_id="premium")
+        self.client.post("/control/gyms/new/", {"step": "2", "plan": plan.pk, "months": "12", "max_devices": "1",
+                                                "price": "18000", "launch_offer": "on", "paid_now": "on", "mode": "Cash"})
+        c = Client.objects.get(gym_name="Shakti")
+        self.assertTrue(GymBilling.objects.get(client=c).launch_offer)
+        p = VendorPayment.objects.get(client=c)
+        self.assertEqual((p.amount, p.mode, p.months, p.period_to), (18000, "Cash", 12, c.current_license.expiry_date))
+        self.assertEqual(c.current_license.expiry_date, p.period_to)          # first payment doesn't add another year
+        self.assertEqual(self.client.get("/control/money/").context["m"]["launch_used"], 1)
+
+    def test_price_saved_on_gym(self):
+        from .models import GymBilling
+        self.client.post(f"/control/gyms/{self.gym.id}/licence/", {"max_devices": "1", "yearly_price": "25000", "gstin": "27abcde1234f1z5"})
+        b = GymBilling.objects.get(client=self.gym)
+        self.assertEqual((b.yearly_price, b.gstin, b.launch_offer), (25000, "27ABCDE1234F1Z5", False))
+
+
+class SupportTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.q = SupportQuery.objects.create(client=self.gym, subject="Second PC", message="How to add a second PC?")
+
+    def test_list_redirects_to_first_and_reply_reaches_gym(self):
+        r = self.client.get("/control/support/")
+        self.assertEqual(r["Location"], f"/control/support/{self.q.id}/?tab=open")
+        self.assertContains(self.client.get(r["Location"]), "How to add a second PC?")
+        self.client.post(f"/control/support/{self.q.id}/act/", {"act": "reply", "text": "Use Team & devices.", "close": "on"})
+        self.q.refresh_from_db()
+        self.assertIn("Crestline: Use Team & devices.", self.q.admin_notes)
+        self.assertEqual(self.q.status, "resolved")
+        self.client.post(f"/control/support/{self.q.id}/act/", {"act": "reopen"})
+        self.client.post(f"/control/support/{self.q.id}/act/", {"act": "reply", "text": "Second answer"})
+        self.q.refresh_from_db()
+        self.assertEqual(self.q.status, "open")
+        self.assertIn("Use Team & devices.", self.q.admin_notes)            # earlier reply kept
+        self.assertIn("Second answer", self.q.admin_notes)
+
+    def test_call_back_and_private_note(self):
+        from .models import SupportMeta
+        self.client.post(f"/control/support/{self.q.id}/act/", {"act": "callback"})
+        self.client.post(f"/control/support/{self.q.id}/act/", {"act": "note", "note": "Called, busy"})
+        m = SupportMeta.objects.get(query=self.q)
+        self.assertTrue(m.call_back)
+        self.assertEqual(m.private_note, "Called, busy")
+        self.assertEqual(self.client.get("/control/support/?tab=call")["Location"], f"/control/support/{self.q.id}/?tab=call")
+        self.q.refresh_from_db()
+        self.assertEqual(self.q.admin_notes, "")                               # private note never goes to the gym
+
+    def test_bad_action(self):
+        self.assertEqual(self.client.post(f"/control/support/{self.q.id}/act/", {"act": "delete"}).status_code, 404)
+
+
+class HealthTests(Base):
+    def test_page_and_tools(self):
+        from unittest import mock
+        r = self.client.get("/control/health/")
+        self.assertContains(r, "Iron Core Gym")
+        with mock.patch("django.core.management.call_command") as cc:
+            r = self.client.post("/control/health/tool/", {"tool": "reminders"}, follow=True)
+        cc.assert_called_once()
+        self.assertContains(r, "reminder lists made")
+        with mock.patch("django.core.management.call_command", side_effect=RuntimeError("R2 not set")):
+            r = self.client.post("/control/health/tool/", {"tool": "backup"}, follow=True)
+        self.assertContains(r, "R2 not set")
+        self.assertEqual(self.client.post("/control/health/tool/", {"tool": "rm"}).status_code, 404)
+
+    def test_backup_warning_for_desktop_gym(self):
+        Device.objects.create(license=self.lic, fingerprint="pc1", device_name="PC")
+        h = S.health_summary()
+        self.assertEqual(h["late_n"], 1)
+        self.assertContains(self.client.get("/control/"), "has never sent a cloud backup")
+
+
+class NightlyGapTests(Base):
+    def test_only_days_after_first_run_count(self):
+        from gym_auto.models import DailyRun
+        self.assertEqual(S.health_summary()["problems"], [])             # never ran: no false alarms
+        DailyRun.objects.create(client=self.gym, date=S.today() - timedelta(days=3))
+        DailyRun.objects.create(client=self.gym, date=S.today() - timedelta(days=1))
+        texts = [p["text"] for p in S.health_summary()["problems"]]
+        self.assertEqual(len(texts), 1)
+        self.assertIn((S.today() - timedelta(days=2)).strftime("%d %b"), texts[0])

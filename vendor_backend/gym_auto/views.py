@@ -509,7 +509,7 @@ def _short(request, code, kind, view):
     if request.method not in ("GET", "HEAD"):
         return _short_page("Not allowed", "Open this link in a browser.", 405)
     link = ShortLink.objects.filter(code=code, kind=kind).first()
-    what = "receipt" if kind == ShortLink.KIND_RECEIPT else "diet plan"
+    what = {"r": "receipt", "d": "diet plan", "i": "invoice"}.get(kind, "document")
     if link is None:
         return _short_page("Link not found", f"This {what} link isn't valid. Please ask your gym to send it again.", 404)
     resp = view(request, link.token, link.filename)

@@ -16,4 +16,12 @@ urlpatterns = [
     path("gyms/<int:client_id>/edit/", views.gym_edit),
     path("gyms/<int:client_id>/licence/", views.gym_licence),
     path("gyms/<int:client_id>/devices/<int:device_id>/", views.device_status),
+    path("money/", views.money_view),
+    path("money/remind/<int:client_id>/", views.money_remind),
+    path("payments/<int:payment_id>/invoice.pdf", views.payment_invoice),
+    path("support/", views.support_view),
+    path("support/<int:query_id>/", views.support_view),
+    path("support/<int:query_id>/act/", views.support_action),
+    path("health/", views.health_view),
+    path("health/tool/", views.health_tool),
 ]

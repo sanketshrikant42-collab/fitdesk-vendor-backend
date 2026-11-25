@@ -23,6 +23,7 @@ from django.views.generic import RedirectView
 from licensing import views as licensing_views
 from gym_core import views as gym_core_views
 from gym_auto import views as gym_auto_views
+from control_panel import views as control_panel_views
 
 def healthz(request):
     """Render's health check (Phase 1): the app is up AND can reach its
@@ -57,6 +58,7 @@ urlpatterns = [
     # Short links members get on WhatsApp (receipt / diet plan PDF).
     path('r/<str:code>', gym_auto_views.receipt_short),
     path('d/<str:code>', gym_auto_views.diet_short),
+    path('i/<str:code>', control_panel_views.invoice_short),
     path('api/v1/', include('gym_core.urls')),
     path('api/v1/', include('gym_ops.urls')),
     path('api/v1/', include('gym_auto.urls')),
