@@ -106,6 +106,8 @@ INSTALLED_APPS = [
     'db_backup',
     # Crestline control panel for the vendor (/control/), superuser only.
     'control_panel',
+    # Demo gym for leads ("Try the demo"), rebuilt nightly.
+    'gym_demo',
 ]
 
 # --- Support-query email notifications -------------------------------------

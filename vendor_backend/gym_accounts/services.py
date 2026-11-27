@@ -161,8 +161,10 @@ def tokens_json(session, access, refresh):
 
 
 def signed_in_json(user, device, session, access, refresh):
+    from gym_demo.guard import is_demo
     out = {"user": user_json(user, with_perms=True), "device": device_json(device),
-           "gym": {"id": user.client_id, "name": user.client.gym_name, "gym_code": GymProfile.for_client(user.client).gym_code},
+           "gym": {"id": user.client_id, "name": user.client.gym_name, "gym_code": GymProfile.for_client(user.client).gym_code,
+                   "demo": is_demo(user.client_id)},
            "licence": licence_json(user.client)}
     out.update(tokens_json(session, access, refresh))
     return out

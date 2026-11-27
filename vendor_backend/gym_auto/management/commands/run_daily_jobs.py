@@ -21,6 +21,7 @@ class Command(BaseCommand):
         parser.add_argument("--date", help="YYYY-MM-DD (default: today in each gym's time zone)")
 
     def handle(self, *args, date=None, **kw):
+        self.refresh_demo()
         n = 0
         for client in Client.objects.all():
             if licence_for(client)[1] != License.STATUS_ACTIVE:
@@ -30,3 +31,18 @@ class Command(BaseCommand):
             n += 1
             self.stdout.write(f"{client.gym_name}: {on} {created or 'nothing new'}")
         self.stdout.write(self.style.SUCCESS(f"Done for {n} gym(s)."))
+
+    def refresh_demo(self):
+        """The demo gym gets fresh made-up data once a day (the first run of
+        the day, i.e. the 6 am job), so leads always see a tidy, current gym."""
+        from django.utils import timezone
+        from gym_demo.models import DemoGym
+        from gym_demo.seed import IST, build
+        d = DemoGym.objects.first()
+        if d is None or timezone.localtime(d.built_at, IST).date() == timezone.localdate(timezone=IST):
+            return
+        try:
+            c = build()
+            self.stdout.write(f"Demo gym rebuilt: {c.gym_name} (gym id {c.id})")
+        except Exception as e:                    # noqa: BLE001 - never stop the real gyms' jobs
+            self.stderr.write(f"Demo gym rebuild failed: {e}")

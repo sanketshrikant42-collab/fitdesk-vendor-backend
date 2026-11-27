@@ -192,6 +192,9 @@ def whatsapp_link(phone, text):
     """Tap-to-send link: opens the gym's own WhatsApp with the message
     filled in. Used until the gym's Meta account is verified."""
     digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    from gym_demo.guard import IN_DEMO
+    if IN_DEMO.get():                   # demo gym: made-up numbers, so let the person pick a chat
+        digits = ""
     return f"https://wa.me/{digits}?text={urllib.parse.quote(text)}"
 
 

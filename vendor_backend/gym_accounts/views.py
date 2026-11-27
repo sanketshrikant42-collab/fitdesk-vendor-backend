@@ -67,7 +67,8 @@ def me(request):
     from .models import GymProfile
     return ok({"user": S.user_json(request.staff, with_perms=True), "device": S.device_json(request.device),
                "gym": {"id": request.client.id, "name": request.client.gym_name,
-                       "gym_code": GymProfile.for_client(request.client).gym_code},
+                       "gym_code": GymProfile.for_client(request.client).gym_code,
+                       "demo": __import__("gym_demo.guard", fromlist=["is_demo"]).is_demo(request.client.id)},
                "licence": S.licence_json(request.client), "server_time": timezone.now().isoformat()})
 
 

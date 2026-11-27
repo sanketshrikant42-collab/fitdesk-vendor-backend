@@ -519,7 +519,7 @@ window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
 async function who(){const j=await call("GET","me/");if(!j.ok){ME=null;GYM=null;if(!document.body.classList.contains("auth-on"))auShow("signin",j.status===0?{msg:esc(err(j))}:{});return}
  if(j.user.must_change_password){ME=j.user;GYM=j.gym;return auShow("changepw",{forced:true})}
  document.body.classList.remove("auth-on");
- ME=j.user;GYM=j.gym;navPerms();brandLogo();$("me").innerHTML=`<div class="av">${ini(ME.name)}</div><div class="nm2"><b>${esc(ME.name)}</b><br><span class="muted">${esc(ME.role)} · ${esc(GYM.name)}</span></div>`;$("hello").textContent=`${greet()}, ${ME.name.split(" ")[0]}`;show(location.hash.slice(1)||"dash");
+ ME=j.user;GYM=j.gym;navPerms();brandLogo();if(typeof demoBar==="function")demoBar();$("me").innerHTML=`<div class="av">${ini(ME.name)}</div><div class="nm2"><b>${esc(ME.name)}</b><br><span class="muted">${esc(ME.role)} · ${esc(GYM.name)}</span></div>`;$("hello").textContent=`${greet()}, ${ME.name.split(" ")[0]}`;show(location.hash.slice(1)||"dash");
  if(ME.role==="owner")call("GET","team/summary/").then(t=>{if(!t.ok)return;teamDot(t.pending_devices);if(t.pending_devices&&location.hash!=="#team")
   {$("gmsg").innerHTML=`<b>${t.pending_devices} device${t.pending_devices>1?"s are":" is"} waiting for your approval.</b> <a class="link" href="#team">Review in Team &amp; devices</a>`;$("gmsg").className="msg show"}})}
 

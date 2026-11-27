@@ -31,6 +31,11 @@ body.auth-on #app,body.auth-on #tabbar{display:none}
 .au-pw{position:relative}.au-pw input{padding-right:64px}
 .au-pw button{position:absolute;right:6px;top:6px;height:34px;border:0;background:none;color:var(--p-t);font-weight:600;font-size:12.5px;padding:0 10px}
 .au-btn{width:100%;height:48px;border-radius:12px;font-size:15px;font-weight:700;margin-top:4px}
+.au-demo{display:grid;gap:6px;margin-top:16px;text-align:center}.au-demo>span{color:var(--t3);font-size:12.5px}.au-demo small{color:var(--t2);font-size:12.5px}
+.demobar{position:fixed;right:18px;bottom:18px;z-index:60;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#14122B;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;box-shadow:0 10px 30px rgba(20,18,43,.35);font-size:13px;max-width:calc(100vw - 36px)}
+.demobar b{font-weight:700}.demobar label{white-space:nowrap}.demobar select{height:34px;border-radius:9px;border:0;padding:0 8px;font:inherit;font-weight:600;background:#2A2650;color:#fff}
+.demobar button{height:34px;border-radius:9px;padding:0 12px;font-weight:600;background:#6D5DF6;border:0;color:#fff}
+@media(max-width:760px){.demobar{right:10px;left:10px;bottom:76px;justify-content:space-between;padding:8px 10px;gap:8px}.demobar>span{flex-basis:100%;font-size:12px}}
 .au-links{display:flex;flex-direction:column;gap:10px;margin-top:22px;padding-top:20px;border-top:1px solid var(--bd)}
 .au-links a,.au-back{color:var(--p-t);font-weight:600;font-size:14px;cursor:pointer;text-decoration:none}
 .au-links span{color:var(--t2);font-size:13.5px}
@@ -170,6 +175,7 @@ const AUV={
    <label class="au-check"><input type="checkbox" id="au-keep" ${(auGet("fd_last")||{}).keep===false?"":"checked"}> Keep me signed in on this device</label>
    <button class="pr au-btn" id="au-go">Sign in</button></form>
   ${auSharedUsers&&auSharedUsers.length?`<div style="margin-top:14px"><button class="au-btn" onclick="auShow('pin')">Switch user with PIN</button></div>`:""}
+  <div class="au-demo"><span>or</span><button type="button" class="au-btn" onclick="auDemo('owner')">Try the demo</button><small>See FitDesk Pro with a sample gym. No sign-up needed.</small></div>
   <div class="au-links"><a onclick="auShow('forgot')">Forgot password?</a>
    <span>Joining a gym? <a onclick="auShow('join')">Use your invite code</a></span>
    <span>New gym owner? <a onclick="auShow('setup')">Set up your gym</a></span></div>`,
@@ -297,7 +303,7 @@ document.addEventListener("keydown",e=>{if($("au-dots")&&document.body.classList
 async function auPinGo(){if(AU.pin.length<4)return auMsg("The PIN has 4 to 6 digits.");
  const j=await auRaw("POST","auth/pin-switch/",{user_id:AU.pinUser.id,pin:AU.pin,device:auDevice()});AU.pin="";auDots();
  if(j.ok)return auSignedIn(j,true);auMsg(j.error==="bad_pin"?"Wrong PIN. Try again.":j.error==="rate_limited"?"Too many wrong PINs. Wait 15 minutes, or sign in with your password.":esc(err(j)))}
-async function auSignOut(){const s=sess();if(s)auRaw("POST","auth/logout/",{},s.access);clearSess();ME=null;GYM=null;
+async function auSignOut(){const s=sess();if(s)auRaw("POST","auth/logout/",{},s.access);clearSess();ME=null;GYM=null;demoBar();
  await auCheckShared();auShow(auSharedUsers?"pin":"signin",{msg:"You've signed out.",kind:"ok"})}
 
 /* ============================== MY ACCOUNT ============================== */
@@ -420,6 +426,14 @@ async function permSave(id,reset){let rows=[];
  NAV.find(([g])=>g==="Gym")[1].push(["team","Team & devices"]);TITLE.team=["Team & devices","Gym"];LOAD.team=loadTeam;NEED.team=["team"];
  IC.team="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75";
  buildNav();$("me").onclick=myAccount})();
-async function boot(){if(sess())return who();await auCheckShared();auShow(auSharedUsers?"pin":"signin")}
+async function auDemo(role){auBusy&&auBusy(true);const s=sess();if(s&&GYM&&GYM.demo)auRaw("POST","auth/logout/",{},s.access);
+ const j=await auRaw("POST","auth/demo/",{role:role||"owner",device:auDevice()});auBusy&&auBusy(false);
+ if(!j.ok){if(!document.body.classList.contains("auth-on"))auShow("signin");return auMsg(esc(j.message||"The demo isn't available right now."))}
+ await auSignedIn(j,false)}
+function demoBar(){let el=document.getElementById("demobar");if(!GYM||!GYM.demo){if(el)el.remove();return}
+ if(!el){el=document.createElement("div");el.id="demobar";el.className="demobar";document.body.appendChild(el)}
+ const roles=[["owner","Owner"],["manager","Manager"],["receptionist","Receptionist"],["trainer","Trainer"]];
+ el.innerHTML=`<span><b>Demo gym</b> · sample data, resets every night</span><label style="display:flex;align-items:center;gap:6px">View as <select aria-label="Switch demo role" onchange="auDemo(this.value)">${roles.map(([v,l])=>`<option value="${v}" ${ME&&ME.role===v?"selected":""}>${l}</option>`).join("")}</select></label><button onclick="auSignOut()">Leave demo</button>`}
+async function boot(){if(!sess()&&/[?&]demo\b/.test(location.search))return auDemo("owner");if(sess())return who();await auCheckShared();auShow(auSharedUsers?"pin":"signin")}
 boot();
 </script>

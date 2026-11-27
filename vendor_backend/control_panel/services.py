@@ -51,6 +51,8 @@ def gym_rows(q="", filt=""):
         q = q.strip()
         clients = clients.filter(Q(gym_name__icontains=q) | Q(owner_name__icontains=q) | Q(phone__icontains=q)
                                  | Q(city__icontains=q) | Q(licenses__key__icontains=q)).distinct()
+    from gym_demo.models import DemoGym
+    demo_ids = set(DemoGym.objects.values_list("client_id", flat=True))
     rows = []
     for c in clients:
         lic = c.current_license
@@ -63,13 +65,14 @@ def gym_rows(q="", filt=""):
              "new_app": new_app, "old_app": old_app,
              "members": c.members_n if new_app else None, "open_support": c.open_support,
              "last_seen": _max(c.lic_seen, c.dev_seen, c.app_seen), "last_backup": c.last_backup,
-             "is_test": "test" in (c.gym_name + " " + c.notes).lower(),
+             "is_demo": c.id in demo_ids,
+             "is_test": c.id in demo_ids or "test" in (c.gym_name + " " + c.notes).lower(),
              "wa": wa_digits(c.phone)}
         r["soon"] = st == "active" and days is not None and days <= SOON_DAYS
-        r["badge"] = ("Test" if r["is_test"] and st == "active" else
+        r["badge"] = ("Demo" if r["is_demo"] else "Test" if r["is_test"] and st == "active" else
                       {"active": "Ending soon" if r["soon"] else "Active", "expired": "Expired", "suspended": "Suspended",
                        "revoked": "Revoked", "no_licence": "No licence"}[st])
-        r["badge_cls"] = {"Active": "ok", "Test": "info", "Ending soon": "warn"}.get(r["badge"], "bad")
+        r["badge_cls"] = {"Active": "ok", "Test": "info", "Demo": "info", "Ending soon": "warn"}.get(r["badge"], "bad")
         rows.append(r)
     if filt == "soon":
         rows = [r for r in rows if r["soon"]]

@@ -118,7 +118,8 @@ def staff_required(module=None, action="view", owner_only=False):
                 StaffSession.objects.filter(pk=session.pk).update(last_used_at=now)
                 type(device).objects.filter(pk=device.pk).update(last_seen_at=now)
             request.staff, request.device, request.client, request.staff_session = user, device, user.client, session
-            return fn(request, *a, **kw)
+            from gym_demo.guard import guard            # demo gym: some changes off, WhatsApp without numbers
+            return guard(request, user.client, lambda: fn(request, *a, **kw))
         return inner
     return deco
 

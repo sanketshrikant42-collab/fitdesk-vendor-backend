@@ -24,6 +24,7 @@ from licensing import views as licensing_views
 from gym_core import views as gym_core_views
 from gym_auto import views as gym_auto_views
 from control_panel import views as control_panel_views
+from gym_demo import views as gym_demo_views
 
 def healthz(request):
     """Render's health check (Phase 1): the app is up AND can reach its
@@ -55,6 +56,8 @@ urlpatterns = [
     path('api/v1/', include('gym_accounts.urls')),
     # The FitDesk Pro web app for gyms (sign-in screens + the whole app).
     path('app/', gym_core_views.app_page, name='fitdesk_app'),
+    # One-tap sign-in to the demo gym ("Try the demo").
+    path('api/v1/auth/demo/', gym_demo_views.demo_sign_in),
     # Short links members get on WhatsApp (receipt / diet plan PDF).
     path('r/<str:code>', gym_auto_views.receipt_short),
     path('d/<str:code>', gym_auto_views.diet_short),
