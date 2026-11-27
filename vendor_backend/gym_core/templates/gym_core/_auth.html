@@ -20,7 +20,38 @@ body.auth-on #app,body.auth-on #tabbar{display:none}
 .au-pts{display:grid;gap:12px}.au-pts div{display:flex;gap:12px;align-items:center;color:#dedbf7;font-size:14px}
 .au-pts i{width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.08);display:grid;place-items:center;flex:none;font-style:normal;color:#f5a623}
 .au-foot{color:#8f8bb7;font-size:12.5px;line-height:1.6}.au-foot a{color:#c9c6e6}
-.au-main{display:flex;align-items:center;justify-content:center;padding:40px 24px;position:relative}
+.au-main{display:flex;align-items:center;justify-content:center;padding:40px 24px;position:relative;
+ background:radial-gradient(900px 500px at 100% 0%,color-mix(in srgb,var(--p) 9%,transparent),transparent 60%),var(--bg)}
+/* sign-in redesign (27 Nov 2026) */
+.au-card{background:var(--surface);border:1px solid var(--bd);border-radius:22px;padding:34px 32px 26px;box-shadow:0 24px 60px rgba(20,18,43,.10)}
+.au-hi{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--p-t);background:var(--pl);border-radius:99px;padding:5px 11px;margin-bottom:14px}
+.au-prev{position:relative;margin:34px 0 6px;max-width:440px}
+.au-prev .pv{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px 16px;backdrop-filter:blur(6px)}
+.au-prev .pv small{display:block;color:#b9b5e0;font-size:11.5px;font-weight:600}.au-prev .pv b{font-size:22px;letter-spacing:-.01em}
+.au-prev .pv .up{color:#5ee0a0;font-size:11.5px;font-weight:700;margin-left:6px}
+.au-prev .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.au-prev .bars{display:flex;align-items:flex-end;gap:6px;height:58px;margin-top:10px}
+.au-prev .bars i{flex:1;border-radius:4px 4px 2px 2px;background:linear-gradient(#9a8dff,#6d5df6);opacity:.9}
+.au-demo{margin-top:18px;display:flex;align-items:center;gap:14px;text-align:left;border:1px dashed color-mix(in srgb,var(--p) 45%,var(--bd));
+ background:color-mix(in srgb,var(--p) 6%,var(--surface));border-radius:16px;padding:14px 16px;cursor:pointer;width:100%;font:inherit;color:inherit}
+.au-card button.au-demo{height:auto;min-height:68px;padding:14px 16px;justify-content:flex-start;box-sizing:border-box;box-shadow:none}
+.au-demo>span:nth-child(2){flex:1;min-width:0;white-space:normal}.au-demo small,.au-demo b{white-space:normal}
+.au-demo:hover{border-style:solid;border-color:var(--p)}
+.au-demo .dic{width:40px;height:40px;border-radius:12px;background:var(--p);color:#fff;display:grid;place-items:center;flex:none}
+.au-demo b{display:block;font-size:14.5px;color:var(--t1)}.au-demo small{color:var(--t2);font-size:12.5px;line-height:1.4;display:block}
+.au-demo .go{margin-left:auto;color:var(--p-t);font-size:20px;font-weight:700}
+.au-or{display:flex;align-items:center;gap:10px;color:var(--t3);font-size:12px;margin:18px 0 0}.au-or::before,.au-or::after{content:"";flex:1;height:1px;background:var(--bd)}
+@media(max-width:860px){
+ body.auth-on #auth{display:block}
+ .au-side{padding:26px 22px 64px;border-radius:0 0 28px 28px}
+ .au-side::before{width:420px;height:420px;top:-220px;right:-200px}
+ .au-brand b{font-size:19px}.au-mark{width:44px;height:44px;font-size:21px}
+ .au-tag{display:block!important;margin-top:16px;color:#dcd9f7;font-size:14.5px;line-height:1.45;max-width:420px}
+ .au-main{display:block;padding:0 14px 40px;margin-top:-40px;background:none}
+ .au-card{max-width:520px;margin:0 auto;padding:24px 20px 20px;border-radius:20px;position:relative;z-index:2}
+ .au-card h2{font-size:23px}
+ .au-theme{position:absolute;top:22px;right:18px;z-index:3}
+}
 .au-theme{position:absolute;top:18px;right:18px}
 .au-card{width:100%;max-width:420px}
 .au-card h2{font-size:26px;letter-spacing:-.02em;margin:0 0 6px}
@@ -31,11 +62,16 @@ body.auth-on #app,body.auth-on #tabbar{display:none}
 .au-pw{position:relative}.au-pw input{padding-right:64px}
 .au-pw button{position:absolute;right:6px;top:6px;height:34px;border:0;background:none;color:var(--p-t);font-weight:600;font-size:12.5px;padding:0 10px}
 .au-btn{width:100%;height:48px;border-radius:12px;font-size:15px;font-weight:700;margin-top:4px}
-.au-demo{display:grid;gap:6px;margin-top:16px;text-align:center}.au-demo>span{color:var(--t3);font-size:12.5px}.au-demo small{color:var(--t2);font-size:12.5px}
-.demobar{position:fixed;right:18px;bottom:18px;z-index:60;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#14122B;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;box-shadow:0 10px 30px rgba(20,18,43,.35);font-size:13px;max-width:calc(100vw - 36px)}
-.demobar b{font-weight:700}.demobar label{white-space:nowrap}.demobar select{height:34px;border-radius:9px;border:0;padding:0 8px;font:inherit;font-weight:600;background:#2A2650;color:#fff}
-.demobar button{height:34px;border-radius:9px;padding:0 12px;font-weight:600;background:#6D5DF6;border:0;color:#fff}
-@media(max-width:760px){.demobar{right:10px;left:10px;bottom:76px;justify-content:space-between;padding:8px 10px;gap:8px}.demobar>span{flex-basis:100%;font-size:12px}}
+.demobar{position:fixed;right:18px;bottom:18px;z-index:60;display:flex;align-items:center;gap:8px;background:#14122B;color:#fff;border-radius:99px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(20,18,43,.35);font-size:13px}
+.demobar .dtag{display:flex;align-items:center;gap:8px;background:none;border:0;color:#fff;font:inherit;font-weight:700;cursor:pointer;height:32px;padding:0}
+.demobar .dtag i{width:8px;height:8px;border-radius:50%;background:#5ee0a0;box-shadow:0 0 0 3px rgba(94,224,160,.2)}
+.demobar .dmore{display:none;align-items:center;gap:8px}.demobar.open .dmore{display:flex}.demobar.open{border-radius:16px}
+.demobar .dmore span{color:#c9c6e6;font-size:12px;white-space:nowrap}
+.demobar select{height:32px;border-radius:99px;border:0;padding:0 8px;font:inherit;font-weight:600;background:#2A2650;color:#fff}
+.demobar .dleave{height:32px;border-radius:99px;padding:0 12px;font-weight:600;background:#6D5DF6;border:0;color:#fff}
+body.demo-on .page{padding-bottom:110px}
+@media(max-width:860px){.demobar{right:12px;bottom:calc(84px + env(safe-area-inset-bottom))}.demobar.open{left:12px;flex-wrap:wrap}.demobar .dmore{flex-wrap:wrap}
+ body.demo-on .page{padding-bottom:calc(150px + env(safe-area-inset-bottom))}}
 .au-links{display:flex;flex-direction:column;gap:10px;margin-top:22px;padding-top:20px;border-top:1px solid var(--bd)}
 .au-links a,.au-back{color:var(--p-t);font-weight:600;font-size:14px;cursor:pointer;text-decoration:none}
 .au-links span{color:var(--t2);font-size:13.5px}
@@ -61,7 +97,7 @@ body.auth-on #app,body.auth-on #tabbar{display:none}
 .au-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .au-pad button{height:58px;border-radius:14px;font-size:22px;font-weight:600}
 .au-code{font-family:ui-monospace,Consolas,monospace;font-size:30px;font-weight:800;letter-spacing:3px;color:var(--p-t);background:var(--pl);border-radius:14px;padding:16px;text-align:center;margin:6px 0 14px}
-@media(max-width:860px){body.auth-on #auth{grid-template-columns:1fr}.au-side{padding:22px 22px 20px}.au-pitch,.au-foot{display:none}.au-main{align-items:flex-start;padding:28px 20px 40px}.au-theme{top:16px;right:14px}.au-side .au-theme{display:none}}
+@media(max-width:860px){.au-pitch,.au-foot{display:none}}
 /* team page */
 .tk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:16px}
 .tk .kpi b{font-size:24px}
@@ -98,10 +134,15 @@ body.auth-on #app,body.auth-on #tabbar{display:none}
 <div id="auth" aria-live="polite">
  <div class="au-side">
   <div class="au-brand"><div class="au-mark">F</div><div><b>FitDesk Pro</b><small>by Crestline Technologies</small></div></div>
+  <p class="au-tag" style="display:none">Run your whole gym from one screen: members, bills, check-ins and staff.</p>
   <div class="au-pitch">
    <h1>Your whole gym,<br>on one screen.</h1>
    <p>Members, billing, check-ins, reminders, staff and payroll, shared live between the front desk, the owner and every trainer.</p>
-   <div class="au-pts">
+   <div class="au-prev" aria-hidden="true">
+    <div class="row2"><div class="pv"><small>Collected this month</small><b>₹74.9K</b><span class="up">▲ 85%</span></div><div class="pv"><small>Running memberships</small><b>37</b> <span style="color:#b9b5e0;font-size:12px">of 46</span></div></div>
+    <div class="pv"><small>Check-ins, last 2 weeks</small><div class="bars"><i style="height:55%"></i><i style="height:40%"></i><i style="height:62%"></i><i style="height:58%"></i><i style="height:45%"></i><i style="height:70%"></i><i style="height:82%"></i><i style="height:60%"></i><i style="height:66%"></i><i style="height:50%"></i><i style="height:38%"></i><i style="height:72%"></i><i style="height:64%"></i><i style="height:90%"></i></div></div>
+   </div>
+   <div class="au-pts" style="margin-top:22px">
     <div><i>✓</i>Every person signs in with their own login</div>
     <div><i>✓</i>Only devices the owner approves can open your gym</div>
     <div><i>✓</i>Your data is encrypted and backed up every night</div>
@@ -167,7 +208,7 @@ const fld=(id,l,o)=>{o=o||{};return `<div><label for="${id}">${l}</label><input 
 const back=(to,t)=>`<a class="au-back" onclick="auShow('${to}')">← ${t||"Back to sign in"}</a>`;
 let auSharedUsers=null;
 const AUV={
- signin:o=>`<h2>Sign in</h2><p class="lead">Use the mobile number and password you sign in to your gym with.</p>
+ signin:o=>`<span class="au-hi">👋 Welcome back</span><h2>Sign in to your gym</h2><p class="lead">Use the mobile number and password you got for your gym.</p>
   <div class="au-msg" id="au-m"></div>
   <form class="au-f" onsubmit="event.preventDefault();auLogin()">
    ${fld("au-phone","Mobile number",{type:"tel",im:"numeric",ac:"username",ph:"10-digit mobile",v:o.phone||(auGet("fd_last")||{}).phone})}
@@ -175,7 +216,8 @@ const AUV={
    <label class="au-check"><input type="checkbox" id="au-keep" ${(auGet("fd_last")||{}).keep===false?"":"checked"}> Keep me signed in on this device</label>
    <button class="pr au-btn" id="au-go">Sign in</button></form>
   ${auSharedUsers&&auSharedUsers.length?`<div style="margin-top:14px"><button class="au-btn" onclick="auShow('pin')">Switch user with PIN</button></div>`:""}
-  <div class="au-demo"><span>or</span><button type="button" class="au-btn" onclick="auDemo('owner')">Try the demo</button><small>See FitDesk Pro with a sample gym. No sign-up needed.</small></div>
+  <div class="au-or">new to FitDesk Pro?</div>
+  <button type="button" class="au-demo" onclick="auDemo('owner')"><span class="dic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 9-14 9V3z"/></svg></span><span><b>Try the demo</b><small>Explore a sample gym in one tap. No sign-up needed.</small></span><span class="go" aria-hidden="true">›</span></button>
   <div class="au-links"><a onclick="auShow('forgot')">Forgot password?</a>
    <span>Joining a gym? <a onclick="auShow('join')">Use your invite code</a></span>
    <span>New gym owner? <a onclick="auShow('setup')">Set up your gym</a></span></div>`,
@@ -259,7 +301,7 @@ function auErr(j,ctx){
   phone_taken:"This mobile number already has a login at this gym. Sign in instead."}[j.error];
  auMsg(t||esc(j.message||"Something went wrong. Please try again."))}
 async function auSignedIn(j,keep){setSess(j,keep);AU.pending=null;AU.pin="";
- try{localStorage.setItem("fd_last",JSON.stringify({phone:j.user.phone,keep:keep!==false}))}catch(e){}
+ try{if(!(j.gym&&j.gym.demo))localStorage.setItem("fd_last",JSON.stringify({phone:j.user.phone,keep:keep!==false}))}catch(e){}   /* #5: never remember demo numbers */
  if(j.user.must_change_password)return auShow("changepw",{forced:true});
  document.body.classList.remove("auth-on");await who()}
 
@@ -430,10 +472,11 @@ async function auDemo(role){auBusy&&auBusy(true);const s=sess();if(s&&GYM&&GYM.d
  const j=await auRaw("POST","auth/demo/",{role:role||"owner",device:auDevice()});auBusy&&auBusy(false);
  if(!j.ok){if(!document.body.classList.contains("auth-on"))auShow("signin");return auMsg(esc(j.message||"The demo isn't available right now."))}
  await auSignedIn(j,false)}
-function demoBar(){let el=document.getElementById("demobar");if(!GYM||!GYM.demo){if(el)el.remove();return}
+function demoBar(){let el=document.getElementById("demobar");if(!GYM||!GYM.demo){if(el)el.remove();document.body.classList.remove("demo-on");return}
  if(!el){el=document.createElement("div");el.id="demobar";el.className="demobar";document.body.appendChild(el)}
  const roles=[["owner","Owner"],["manager","Manager"],["receptionist","Receptionist"],["trainer","Trainer"]];
- el.innerHTML=`<span><b>Demo gym</b> · sample data, resets every night</span><label style="display:flex;align-items:center;gap:6px">View as <select aria-label="Switch demo role" onchange="auDemo(this.value)">${roles.map(([v,l])=>`<option value="${v}" ${ME&&ME.role===v?"selected":""}>${l}</option>`).join("")}</select></label><button onclick="auSignOut()">Leave demo</button>`}
+ document.body.classList.add("demo-on");
+ el.innerHTML=`<button class="dtag" aria-expanded="false" title="Demo options" onclick="const b=this.parentNode;b.classList.toggle('open');this.setAttribute('aria-expanded',b.classList.contains('open'))"><i></i>Demo · ${esc((roles.find(r=>ME&&r[0]===ME.role)||["","Owner"])[1])}</button><span class="dmore"><span>Sample data, resets nightly</span><select aria-label="View the demo as" onchange="auDemo(this.value)">${roles.map(([v,l])=>`<option value="${v}" ${ME&&ME.role===v?"selected":""}>View as ${l}</option>`).join("")}</select><button class="dleave" onclick="auSignOut()">Leave demo</button></span>`}
 async function boot(){if(!sess()&&/[?&]demo\b/.test(location.search))return auDemo("owner");if(sess())return who();await auCheckShared();auShow(auSharedUsers?"pin":"signin")}
 boot();
 </script>

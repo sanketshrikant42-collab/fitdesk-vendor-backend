@@ -68,7 +68,8 @@ def me(request):
     return ok({"user": S.user_json(request.staff, with_perms=True), "device": S.device_json(request.device),
                "gym": {"id": request.client.id, "name": request.client.gym_name,
                        "gym_code": GymProfile.for_client(request.client).gym_code,
-                       "demo": __import__("gym_demo.guard", fromlist=["is_demo"]).is_demo(request.client.id)},
+                       "demo": __import__("gym_demo.guard", fromlist=["is_demo"]).is_demo(request.client.id),
+                       "has_logo": _has_logo(request.client)},
                "licence": S.licence_json(request.client), "server_time": timezone.now().isoformat()})
 
 
@@ -357,3 +358,8 @@ def test_console(request):
     routed when DEBUG=True (see urls.py), so it never exists in production."""
     from django.shortcuts import render
     return render(request, "gym_accounts/console.html")
+
+
+def _has_logo(client):
+    from .services import has_logo
+    return has_logo(client)

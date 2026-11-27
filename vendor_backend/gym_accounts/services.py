@@ -164,7 +164,7 @@ def signed_in_json(user, device, session, access, refresh):
     from gym_demo.guard import is_demo
     out = {"user": user_json(user, with_perms=True), "device": device_json(device),
            "gym": {"id": user.client_id, "name": user.client.gym_name, "gym_code": GymProfile.for_client(user.client).gym_code,
-                   "demo": is_demo(user.client_id)},
+                   "demo": is_demo(user.client_id), "has_logo": has_logo(user.client)},
            "licence": licence_json(user.client)}
     out.update(tokens_json(session, access, refresh))
     return out
@@ -539,3 +539,10 @@ def gym_object(model, client, pk):
         raise ApiError(404, "not_found", "Not found.")
     return obj
 
+
+
+def has_logo(client):
+    """Whether the gym uploaded a logo (so the app doesn't ask for one that isn't there)."""
+    from gym_core.models import GymSettings
+    s = GymSettings.objects.filter(client=client).only("logo").first()
+    return bool(s and s.logo)
